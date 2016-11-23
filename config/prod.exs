@@ -2,6 +2,7 @@ use Mix.Config
 
 config :kastlex, Kastlex.Endpoint,
   http: [port: 8092],
+  code_reloader: false,
   server: true,
   root: "."
 

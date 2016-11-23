@@ -76,6 +76,7 @@ defmodule Kastlex do
     endpoint = Application.fetch_env!(:kastlex, Kastlex.Endpoint)
     Application.put_env(:kastlex, Kastlex.Endpoint, Keyword.put(endpoint, :https, config))
   end
+  defp maybe_init_https(_), do: :ok
 
   defp maybe_set_secret_key(nil), do: :ok
   defp maybe_set_secret_key(keyfile) do

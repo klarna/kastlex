@@ -3,19 +3,27 @@ defmodule Kastlex.Mixfile do
 
   def project do
     [app: :kastlex,
-     version: "0.0.1",
+     description: "Apache Kafka REST Proxy",
+     version: "1.0.0",
      elixir: "~> 1.0",
      elixirc_paths: elixirc_paths(Mix.env),
      compilers: [:phoenix, :gettext] ++ Mix.compilers,
      build_embedded: Mix.env == :prod,
      start_permanent: Mix.env == :prod,
-     deps: deps]
+     deps: deps,
+     aliases: aliases]
+  end
+
+  defp aliases do
+    [c: "compile",
+     rpm: &rpm/1]
   end
 
   def application do
     [mod: {Kastlex, []},
-     applications: [:logger, :phoenix, :cowboy, :gettext, :yamerl,
-                    :yaml_elixir, :comeonin, :erlzk, :brod, :guardian, :ssl]]
+     applications: [:logger, :phoenix, :phoenix_pubsub, :cowboy,
+                    :gettext, :yamerl, :yaml_elixir, :comeonin, :erlzk, :brod,
+                    :kafka_protocol, :supervisor3, :snappyer, :guardian, :ssl]]
   end
 
   # Specifies which paths to compile per environment.
@@ -25,15 +33,27 @@ defmodule Kastlex.Mixfile do
   defp deps do
     [{:phoenix, "~> 1.2"},
      {:phoenix_live_reload, "~> 1.0", only: :dev},
-     {:gettext, "~> 0.11"},
+     {:gettext, "~> 0.12"},
      {:cowboy, "~> 1.0"},
      {:yaml_elixir, "~> 1.2"},
      {:brod, "~> 2.2.0"},
-     {:exrm, "~> 1.0"},
+     {:distillery, "~> 0.10"},
      {:guardian, "~> 0.13.0"},
      {:erlzk, "~> 0.6.3"},
      {:comeonin, "~> 2.5"}
     ]
+  end
+
+  defp rpm(_) do
+    args = Enum.join(["--define \"_sourcedir $(pwd)\"",
+                      "--define \"_builddir $(pwd)\"",
+                      "--define \"_rpmdir $(pwd)\"",
+                      "--define \"_topdir $(pwd)\"",
+                      "--define \"_name #{Mix.Project.config()[:app]}\"",
+                      "--define \"_description #{Mix.Project.config()[:description]}\"",
+                      "--define \"_version #{Mix.Project.config()[:version]}\""
+                     ], " ")
+    Mix.shell.cmd "rpmbuild -v -bb #{args} rpm/kastlex.spec"
   end
 
 end
