@@ -3,7 +3,7 @@
 /db
 /deps
 /*.ez
-/rel/
+/rel/kastlex/
 
 # Generate on crash by the VM
 erl_crash.dump
