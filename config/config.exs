@@ -37,6 +37,11 @@ config :guardian, Guardian,
   # secret_key is expected to be found in $KASTLEX_SECRET_KEY_FILE
   serializer: Kastlex.GuardianSerializer
 
+config :plug_statsd,
+  metrics: [
+    {:counter, &Kastlex.API.V1.BrokerController.list_brokers/2, sample_rate: 0.1}
+  ]
+
 # Import environment specific config. This must remain at the bottom
 # of this file so it overrides the configuration defined above.
 import_config "#{Mix.env}.exs"

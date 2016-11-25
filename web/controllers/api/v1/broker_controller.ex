@@ -5,6 +5,7 @@ defmodule Kastlex.API.V1.BrokerController do
   use Kastlex.Web, :controller
 
   plug Kastlex.Plug.EnsurePermissions
+  plug Plug.Statsd
 
   def list_brokers(conn, _params) do
     {:ok, brokers} = Kastlex.MetadataCache.get_brokers()

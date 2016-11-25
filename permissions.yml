@@ -9,6 +9,8 @@ anonymous:
   show_urps: all
   list_groups: true
   show_group: all
+  produce:
+    - foobar
 user1:
   produce:
     - kastlex

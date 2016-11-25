@@ -23,7 +23,8 @@ defmodule Kastlex.Mixfile do
     [mod: {Kastlex, []},
      applications: [:logger, :phoenix, :phoenix_pubsub, :cowboy,
                     :gettext, :yamerl, :yaml_elixir, :comeonin, :erlzk, :brod,
-                    :kafka_protocol, :supervisor3, :snappyer, :guardian, :ssl]]
+                    :kafka_protocol, :supervisor3, :snappyer, :guardian, :ssl,
+                    :plug_statsd, :ex_statsd]]
   end
 
   # Specifies which paths to compile per environment.
@@ -40,7 +41,9 @@ defmodule Kastlex.Mixfile do
      {:distillery, "~> 0.10"},
      {:guardian, "~> 0.13.0"},
      {:erlzk, "~> 0.6.3"},
-     {:comeonin, "~> 2.5"}
+     {:comeonin, "~> 2.5"},
+     {:plug_statsd, "~> 0.4.1"},
+     {:ex_statsd, "~> 0.5.3"}
     ]
   end
 
