@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Kastelx</title>
+    <script src="https://unpkg.com/vue/dist/vue.js"></script>
+    <script src="https://unpkg.com/vue-resource@1.0.3/dist/vue-resource.min.js"></script>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+  </head>
+
+  <style>
+    body {font-family: "Lato", sans-serif;}
+    div.tabsheader {
+      border-bottom: 1px solid #ccc
+    }
+    div.tabsheader span {
+      display: inline-block;
+      padding-bottom: 0.7rem;
+      margin-right: 3rem;
+      border-bottom: 2px solid transparent;
+    }
+    div.tabsheader span.active {
+      border-bottom: 2px solid #009900;
+    }
+    div.tabsheader span:hover {
+      cursor: pointer;
+    }
+
+    .treeitem {
+      cursor: pointer;
+    }
+    ul {
+      padding-left: 1em;
+      line-height: 1.5em;
+      list-style-type: none;
+    }
+    .material-icons{
+      font-size: 90%;
+      color: #009900;
+      font-weight: bold;
+      vertical-align: text-bottom;
+    }
+    table, td, th{
+      border: 1px solid #dddddd;
+      padding: 0.2em;
+      border-collapse: collapse;
+    }
+    table tr:nth-child(odd) {
+      background-color: #eee;
+    }
+    th {
+      font-weight: normal;
+    }
+    div.indent{
+      padding-left: 1em;
+      line-height: 1em;
+    }
+    div.status{
+      font-size: 90%;
+    }
+    div.failure{
+      color: red;
+    }
+  </style>
+
+  <script type="text/x-template" id="treeitem-template">
+    <li>
+      <div :class="{'indent': !isFolder}" @click="toggle">
+        <i class="material-icons" v-if="isFolder">
+          {{open ? '&#xe5ce;' : '&#xe5cc;'}}
+        </i>
+        <span>{{model.treenodename}}</span>
+        <i v-if="isRefreshable()" class="material-icons" @click="refresh">refresh</i>
+      </div>
+      <ul v-show="open" v-if="isFolder">
+        <div class="indent">
+          <table v-if="model.tabledata">
+            <tr v-if="model.headers">
+              <th v-for="col in model.headers">{{col}}</th>
+            </tr>
+            <tr v-for="row in model.tabledata">
+              <td nowrap v-for="col in row">{{col}}</td>
+            </tr>
+          </table>
+        </div>
+        <treeitem class="treeitem" v-for="child in model.children" :model="child">
+        </treeitem>
+      </ul>
+    </li>
+  </script>
+
+  <body>
+  <div id="app">
+    <div class="tabsheader">
+      <span :class="{'active': tabTopics}" @click="showTopics">Topics</span>
+      <span :class="{'active': tabCgs}"    @click="showCgs">Consumer Groups</span>
+      <span :class="{'active': tabBrokers}"  @click="showBrokers">Brokers</span>
+    </div>
+    <div class="tabscontent">
+        <div v-if="tabTopics">
+          <ul>
+            <treeitem class="treeitem" v-for="topic in topics" :model="topic">
+            </treeitem>
+          </ul>
+        </div>
+        <div v-if="tabCgs">
+          <ul>
+            <treeitem class="treeitem" v-for="cg in cgs" :model="cg">
+            </treeitem>
+          </ul>
+
+        </div>
+        <div v-if="tabBrokers">
+          <ul>
+            <treeitem class="treeitem" v-for="broker in brokers" :model="broker">
+            </treeitem>
+          </ul>
+        </div>
+    </div>
+    <hr/>
+    <div class="status">
+      <pre>{{last_req}}</pre>
+      <div :class="{'failure': !last_rsp_ok}">
+        <pre>{{last_rsp}}</pre>
+      </div>
+    </div>
+  </div>
+  <script src="/js/app.js"></script>
+  </body>
+</html>
