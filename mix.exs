@@ -16,7 +16,9 @@ defmodule Kastlex.Mixfile do
 
   defp aliases do
     [c: "compile",
-     rpm: &rpm/1]
+     rpm: &rpm/1,
+     version: &version/1
+    ]
   end
 
   def application do
@@ -54,6 +56,10 @@ defmodule Kastlex.Mixfile do
                       "--define \"_version #{Mix.Project.config()[:version]}\""
                      ], " ")
     Mix.shell.cmd "rpmbuild -v -bb #{args} rpm/kastlex.spec"
+  end
+
+  defp version(_) do
+    Mix.shell.info("#{Mix.Project.config()[:version]}")
   end
 
 end
