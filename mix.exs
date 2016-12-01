@@ -46,19 +46,29 @@ defmodule Kastlex.Mixfile do
     ]
   end
 
-  defp rpm(_) do
+  defp rpm(args) do
+    release = case Integer.parse(:erlang.list_to_binary(args)) do
+                :error -> 1
+                {x, _} -> x
+              end
     args = Enum.join(["--define \"_sourcedir $(pwd)\"",
                       "--define \"_builddir $(pwd)\"",
                       "--define \"_rpmdir $(pwd)\"",
                       "--define \"_topdir $(pwd)\"",
                       "--define \"_name #{Mix.Project.config()[:app]}\"",
                       "--define \"_description #{Mix.Project.config()[:description]}\"",
-                      "--define \"_version #{Mix.Project.config()[:version]}\""
+                      "--define \"_version #{Mix.Project.config()[:version]}\"",
+                      "--define \"_release_version #{release}\""
                      ], " ")
     Mix.shell.cmd "rpmbuild -v -bb #{args} rpm/kastlex.spec"
   end
 
-  defp version(_) do
+  defp version(args) do
+    case Integer.parse(:erlang.list_to_binary(args)) do
+      :error -> :ok
+      {x, _} ->
+        Mix.shell.info("#{x}")
+    end
     Mix.shell.info("#{Mix.Project.config()[:version]}")
   end
 

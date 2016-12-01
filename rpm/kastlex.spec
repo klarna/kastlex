@@ -8,7 +8,7 @@
 Summary: %{_description}
 Name: %{_name}
 Version: %{_version}
-Release: 1%{?dist}
+Release: %{_release_version}%{?dist}
 License: Apache License, Version 2.0
 URL: https://github.com/klarna/kastlex
 BuildRoot: %{_tmppath}/%{_name}-%{_version}-root
