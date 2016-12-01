@@ -18,7 +18,7 @@ defmodule Kastlex.CgStatusCollector do
         Logger.info "#{@topic} topic not found, skip cg_status_collector"
         :ignore
       _ ->
-        consumer_config = [{:begin_offset, :earliest}]
+        consumer_config = [{:begin_offset, :latest}]
         ## start a topic subscriber which will spawn one consumer process
         ## for each partition, and subscribe to all partition consumers
         :brod_topic_subscriber.start_link(client, @topic, _partitions = :all,
