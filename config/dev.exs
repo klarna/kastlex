@@ -24,9 +24,6 @@ config :kastlex, Kastlex.Endpoint,
     ]
   ]
 
-config :guardian, Guardian,
-  secret_key: "yCWR+HlWNjnBzh1UsGducT9Irq8zmAWxMbPUV+e3S70cPXeJRMz62y5xDtB3qCRL"
-
 # Set a higher stacktrace during development.
 # Do not configure such in production as keeping
 # and calculating stacktraces is usually expensive.

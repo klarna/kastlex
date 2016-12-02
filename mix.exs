@@ -40,7 +40,7 @@ defmodule Kastlex.Mixfile do
      {:yaml_elixir, "~> 1.2"},
      {:brod, "~> 2.2.0"},
      {:distillery, "~> 0.10"},
-     {:guardian, "~> 0.13.0"},
+     {:guardian, git: "git@github.com:ueberauth/guardian.git", ref: "5f9488a"},
      {:erlzk, "~> 0.6.3"},
      {:comeonin, "~> 2.5"}
     ]

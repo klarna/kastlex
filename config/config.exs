@@ -34,7 +34,7 @@ config :guardian, Guardian,
   issuer: "Kastlex",
   ttl: { 30, :days },
   verify_issuer: true,
-  # secret_key is expected to be found in $KASTLEX_SECRET_KEY_FILE
+  secret_key: {Kastlex.SecretKey, :fetch},
   serializer: Kastlex.GuardianSerializer
 
 # Import environment specific config. This must remain at the bottom

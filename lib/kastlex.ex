@@ -12,8 +12,7 @@ defmodule Kastlex do
     Application.put_env(:kastlex, Kastlex.Endpoint, Keyword.put(endpoint, :http, http))
 
     maybe_init_https(System.get_env("KASTLEX_USE_HTTPS"))
-    maybe_set_secret_key(System.get_env("KASTLEX_SECRET_KEY_FILE"))
-    maybe_set_jwk(System.get_env("KASTLEX_JWK_FILE"))
+    maybe_set_secret_key_base(System.get_env("KASTLEX_SECRET_KEY_BASE"))
     kafka_endpoints = parse_endpoints(System.get_env("KASTLEX_KAFKA_CLUSTER"), [{'localhost', 9092}])
     zk_cluster = parse_endpoints(System.get_env("KASTLEX_ZOOKEEPER_CLUSTER"), [{'localhost', 2181}])
 
@@ -78,18 +77,10 @@ defmodule Kastlex do
   end
   defp maybe_init_https(_), do: :ok
 
-  defp maybe_set_secret_key(nil), do: :ok
-  defp maybe_set_secret_key(keyfile) do
-    key = JOSE.JWK.from_file(keyfile)
+  defp maybe_set_secret_key_base(nil), do: :ok
+  defp maybe_set_secret_key_base(secret_key_base) do
     endpoint = Application.fetch_env!(:kastlex, Kastlex.Endpoint)
-    Application.put_env(:kastlex, Kastlex.Endpoint, Keyword.put(endpoint, :secret_key_base, key))
-  end
-
-  defp maybe_set_jwk(nil), do: :ok
-  defp maybe_set_jwk(keyfile) do
-    key = JOSE.JWK.from_file(keyfile)
-    guardian = Application.fetch_env!(:kastlex, Guardian)
-    Application.put_env(:kastlex, Guardian, Keyword.put(guardian, :secret_key, key))
+    Application.put_env(:kastlex, Kastlex.Endpoint, Keyword.put(endpoint, :secret_key_base, secret_key_base))
   end
 
   defp system_env(variable, default) do
