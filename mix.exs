@@ -23,7 +23,7 @@ defmodule Kastlex.Mixfile do
 
   def application do
     [mod: {Kastlex, []},
-     applications: [:logger, :phoenix, :phoenix_pubsub, :cowboy,
+     applications: [:logger, :phoenix, :phoenix_pubsub, :phoenix_html, :cowboy,
                     :gettext, :yamerl, :yaml_elixir, :comeonin, :erlzk, :brod,
                     :kafka_protocol, :supervisor3, :snappyer, :guardian, :ssl]]
   end
