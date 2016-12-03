@@ -6,6 +6,10 @@ defmodule Kastlex.Router do
 
   import Kastlex.Helper
 
+  pipeline :browser do
+    plug :accepts, ["html"]
+  end
+
   pipeline :api do
     plug :accepts, ~w(json)
   end
@@ -14,6 +18,11 @@ defmodule Kastlex.Router do
     plug Guardian.Plug.VerifyHeader, realm: "Bearer"
     plug Guardian.Plug.LoadResource
     plug Kastlex.Plug.EnsureAuthenticated
+  end
+
+  scope "/", Kastlex do
+    pipe_through :browser # Use the default browser stack
+    get "/", PageController, :index
   end
 
   scope "/", Kastlex do

@@ -28,6 +28,7 @@ defmodule Kastlex do
     children = [
       # Start the endpoint when the application starts
       supervisor(Kastlex.Endpoint, []),
+      supervisor(Phoenix.PubSub.PG2, [Kastlex.PubSub, []]),
       worker(Kastlex.Users, []),
       worker(Kastlex.MetadataCache, [%{zk_cluster: zk_cluster}]),
       worker(Kastlex.CgCache, []),

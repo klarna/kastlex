@@ -9,7 +9,9 @@ use Mix.Config
 config :kastlex, Kastlex.Endpoint,
   root: Path.dirname(__DIR__),
   secret_key_base: "2N8sGXA6wijnGpzmiEl3y6H2YCf7RbeBbi7xgE58txpm6AxDWS+A4TYrUY0jYYGV",
-  render_errors: [accepts: ~w(json), default_format: ~w(json)]
+  render_errors: [accepts: ~w(json), default_format: ~w(json)],
+  pubsub: [name: Phoenix.PubSub,
+           adapter: Phoenix.PubSub.PG2]
 
 config :kastlex, Kastlex.MetadataCache,
   refresh_timeout_ms: 30000,

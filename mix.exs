@@ -34,8 +34,10 @@ defmodule Kastlex.Mixfile do
 
   defp deps do
     [{:phoenix, "~> 1.2"},
+     {:phoenix_pubsub, "~> 1.0"},
      {:phoenix_live_reload, "~> 1.0", only: :dev},
      {:gettext, "~> 0.12"},
+     {:phoenix_html, "~> 2.8.0"},
      {:cowboy, "~> 1.0"},
      {:yaml_elixir, "~> 1.2"},
      {:brod, "~> 2.2.0"},
