@@ -99,7 +99,7 @@ function isEmpty(d) {
 function makeKvRows(obj, keys) {
   var kv = function(key) {
     var val = obj[key];
-    if(val == 'undefined'){
+    if(val === null){
       val = '';
     }
     return [key, val];
@@ -108,8 +108,16 @@ function makeKvRows(obj, keys) {
 }
 
 function makeCgTableData(r) {
-  var keys = ['leader', 'protocol', 'generation_id'];
-  return makeKvRows(r, keys);
+  var st = r.status;
+  var t = typeof st;
+  if(t === 'object'){
+    if(st.leader && st.protocol) {
+      var keys = ['leader', 'protocol'];
+      return makeKvRows(st, keys);
+    }
+    return [['status', 'rebalancing']];
+  }
+  return [['status', st]];
 }
 
 function makeCgMember(member) {
@@ -132,17 +140,21 @@ function makeCgMember(member) {
   return r;
 }
 
+function pad0(i) {
+  if(i < 10) {
+    return '0' + i;
+  }
+  return '' + i;
+}
+
 function formatTs(Ts) {
   var date = new Date(Ts);
-  var hours = date.getHours();
-  var minutes = date.getMinutes();
-  var seconds = date.getSeconds();
-  minutes = minutes < 10 ? '0'+minutes : minutes;
+  var hours = pad0(date.getHours());
+  var minutes = pad0(date.getMinutes());
+  var seconds = pad0(date.getSeconds());
   var strTime = hours + ':' + minutes + ':' + seconds;
-  var day = date.getDate(),
-  day = day < 10 ? '0' + day : day;
-  var mon = date.getMonth()+1,
-  mon = mon < 10 ? '0' + mon : mon;
+  var day = pad0(date.getDate());
+  var mon = pad0(date.getMonth()+1);
   return date.getFullYear() + '-' + mon + '-' + day + "  " + strTime;
 }
 
@@ -158,14 +170,18 @@ function makeCgOffsetsRow(p, keys) {
 
 function makeCgTreeNodeChildren(r) {
   var res = []
-  if(r.members && r.members.length){
-    var membersNode =
-      { treenodename: 'members'
-      , children: r.members.map(makeCgMember)
-      };
-    res.push(membersNode);
+  var st = r.status
+  if(typeof st === 'object') {
+    var members = st.members
+    if(members && members.length){
+      var membersNode =
+        { treenodename: 'members'
+        , children: members.map(makeCgMember)
+        };
+      res.push(membersNode);
+    }
   }
-  if(r.partitions && r.partitions.length){
+  if(r.offsets && r.offsets.length){
     var keys =
       [ {name: 'topic'}
       , {name: 'partition'}
@@ -178,18 +194,8 @@ function makeCgTreeNodeChildren(r) {
     var offsetsNode =
       { treenodename: "offsets"
       , headers: keys.map(function(k) {return k.name;})
-      , tabledata: r.partitions.map(function(p) {
-                      if(!p.high_wm_offset || p.high_wm_offset < p.offset) {
-                        // high watermark offset and committed offset are
-                        // collected in two different (async) flow
-                        // show '?' in case high watermark offset is not found
-                        // or being delayed
-                        p.lagging = '?'
-                      }
-                      else {
-                        p.lagging = p.high_wm_offset - p.offset;
-                      }
-                      return makeCgOffsetsRow(p, keys);
+      , tabledata: r.offsets.map(function(offset) {
+                      return makeCgOffsetsRow(offset, keys);
                     })
       };
     res.push(offsetsNode);
