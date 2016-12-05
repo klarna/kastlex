@@ -37,7 +37,6 @@ defmodule Kastlex.OffsetsCache do
                            refresh_offsets(brod, t.topic, p.partition)
                          end)
               end)
-    Kastlex.CgCache.refresh_hwm_offsets()
     :erlang.send_after(state.refresh_timeout_ms, Kernel.self(), @refresh)
     {:noreply, state}
   end

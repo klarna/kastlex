@@ -18,7 +18,7 @@ defmodule Kastlex.CgStatusCollector do
         Logger.info "#{@topic} topic not found, skip cg_status_collector"
         :ignore
       _ ->
-        consumer_config = [{:begin_offset, :latest}]
+        consumer_config = [{:begin_offset, :earliest}]
         ## start a topic subscriber which will spawn one consumer process
         ## for each partition, and subscribe to all partition consumers
         :brod_topic_subscriber.start_link(client, @topic, _partitions = :all,
@@ -35,7 +35,7 @@ defmodule Kastlex.CgStatusCollector do
     value_bin = kafka_message(msg, :value)
     {tag, key, value} = :kpro_consumer_group.decode(key_bin, value_bin)
     case tag do
-      :offset -> Kastlex.CgCache.commited_offset(key, value)
+      :offset -> Kastlex.CgCache.committed_offset(key, value)
       :group -> Kastlex.CgCache.new_cg_status(key, value)
     end
     {:ok, :ack, state}
