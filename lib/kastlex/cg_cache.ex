@@ -1,32 +1,27 @@
 defmodule Kastlex.CgCache do
   require Logger
 
-  @server __MODULE__
-
-  ## ets tables
-  @offsets :cg_cache_offsets # ets table for offsets
-  @cgs :cg_cache_cgs # ets table for cg status
+  ## dets tables
+  @offsets :cg_cache_offsets # dets table for offsets
+  @cgs :cg_cache_cgs # dets table for cg status
+  @progress :cg_cache_progress # dets table for cg data collection progress
 
   ## message tags
   @offset :offset
   @cg :cg
 
-  def start_link() do
-    GenServer.start_link(__MODULE__, [], [name: @server])
-  end
-
   ## return all (active/inactive consumer groups)
   def get_groups() do
     ## return all active consumer groups
-    cg_keys = :ets.select(@cgs, [{{:"$1", :"_"}, [], [:"$1"]}]) |> :gb_sets.from_list
+    cg_keys = :dets.select(@cgs, [{{:"$1", :"_"}, [], [:"$1"]}]) |> :gb_sets.from_list
     ## return also inactive consumer groups (when committed offsets are found)
-    offset_keys = :ets.select(@offsets, [{{:"$1", :"_"}, [], [:"$1"]}]) |> :gb_sets.from_list
+    offset_keys = :dets.select(@offsets, [{{:"$1", :"_"}, [], [:"$1"]}]) |> :gb_sets.from_list
     :gb_sets.union(cg_keys, offset_keys) |> :gb_sets.to_list
   end
 
   def get_group(group_id) do
     committed_offsets =
-      ets_lookup(@offsets, group_id, %{}) |>
+      lookup(@offsets, group_id, %{}) |>
       Enum.map(fn({{topic, partition}, details}) ->
                  offset = Keyword.fetch!(details, :offset)
                  [ {:topic, topic},
@@ -34,7 +29,7 @@ defmodule Kastlex.CgCache do
                    {:lagging, get_lagging(topic, partition, offset)}
                  | details] |> to_maps
                end)
-    case ets_lookup(@cgs, group_id, false) do
+    case lookup(@cgs, group_id, false) do
       false ->
         %{:group_id => group_id,
           :offsets => committed_offsets,
@@ -48,56 +43,50 @@ defmodule Kastlex.CgCache do
   end
 
   def committed_offset(key, value) do
-    GenServer.cast(@server, {@offset, key, value})
-  end
-
-  def new_cg_status(key, value) do
-    GenServer.cast(@server, {@cg, key, value})
-  end
-
-  def init(_options) do
-    :ets.new(@offsets, [:set, :protected, :named_table, {:read_concurrency, true}])
-    :ets.new(@cgs, [:set, :protected, :named_table, {:read_concurrency, true}])
-    {:ok, %{}}
-  end
-
-  def handle_cast({@offset, key, value}, state) do
     group_id = ets_key = key[:group_id]
     map_key = {key[:topic], key[:partition]}
-    group = ets_lookup(@offsets, ets_key, %{})
+    group = lookup(@offsets, ets_key, %{})
     group = case value do
               [] -> Map.delete(group, map_key)
               _  -> Map.put(group, map_key, value)
             end
     case group === %{} do
-      :true  -> :ets.delete(@offsets, group_id)
-      :false -> :ets.insert(@offsets, {group_id, group})
+      :true  -> :dets.delete(@offsets, group_id)
+      :false -> :dets.insert(@offsets, {group_id, group})
     end
-    {:noreply, state}
   end
 
-  def handle_cast({@cg, key, []}, state) do
+  def new_cg_status(key, []) do
     group_id = key[:group_id]
-    :ets.delete(@cgs, group_id)
-    {:noreply, state}
+    :dets.delete(@cgs, group_id)
   end
-  def handle_cast({@cg, key, value}, state) do
+  def new_cg_status(key, value) do
     group_id = key[:group_id]
-    :ets.insert(@cgs, {group_id, value})
-    {:noreply, state}
+    :dets.insert(@cgs, {group_id, value})
   end
 
-  def handle_info(msg, state) do
-    Logger.error "Unexpected msg: #{msg}"
-    {:noreply, state}
+  def update_progress(partition, offset) do
+    :dets.insert(@progress, {partition, offset})
   end
 
-  def terminate(reason, _state) do
-    Logger.info "#{inspect Kernel.self} is terminating: #{inspect reason}"
+  def get_progress() do
+    :dets.foldl(fn({p, o}, acc) -> [{p,o} | acc] end, [], @progress)
   end
 
-  defp ets_lookup(table, key, default) do
-    case :ets.lookup(table, key) do
+  def init(:priv), do: init(:code.priv_dir(:kastlex))
+  def init(dir) do
+    f_offsets  = :filename.join(dir, "offsets.dets")
+    f_cgs      = :filename.join(dir, "cgs.dets")
+    f_progress = :filename.join(dir, "progress.dets")
+    common_open_args = [{:access, :read_write}]
+    {:ok, _} = :dets.open_file(@offsets, [{:file, f_offsets} | common_open_args])
+    {:ok, _} = :dets.open_file(@cgs, [{:file, f_cgs} | common_open_args])
+    {:ok, _} = :dets.open_file(@progress, [{:file, f_progress} | common_open_args])
+    :ok
+  end
+
+  defp lookup(table, key, default) do
+    case :dets.lookup(table, key) do
       [] -> default
       [{_, value}] -> value
     end

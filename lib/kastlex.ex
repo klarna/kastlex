@@ -18,8 +18,10 @@ defmodule Kastlex do
 
     permissions_file_path = system_env("KASTLEX_PERMISSIONS_FILE_PATH", "permissions.yml")
     passwd_file_path = system_env("KASTLEX_PASSWD_FILE_PATH", "passwd.yml")
+    cg_cache_dir = system_env("KASTLEX_CG_CACHE_DIR", :priv)
     Application.put_env(:kastlex, :permissions_file_path, permissions_file_path)
     Application.put_env(:kastlex, :passwd_file_path, passwd_file_path)
+    Application.put_env(:kastlex, :cg_cache_dir, cg_cache_dir)
 
     brod_client_config = [{:allow_topic_auto_creation, false},
                           {:auto_start_producers, true}]
@@ -31,7 +33,6 @@ defmodule Kastlex do
       supervisor(Phoenix.PubSub.PG2, [Kastlex.PubSub, []]),
       worker(Kastlex.Users, []),
       worker(Kastlex.MetadataCache, [%{zk_cluster: zk_cluster}]),
-      worker(Kastlex.CgCache, []),
       worker(Kastlex.OffsetsCache, [%{brod_client_id: :kastlex}]),
       worker(Kastlex.CgStatusCollector, [%{brod_client_id: :kastlex}]),
     ]
