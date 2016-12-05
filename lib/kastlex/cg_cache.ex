@@ -75,9 +75,9 @@ defmodule Kastlex.CgCache do
 
   def init(:priv), do: init(:code.priv_dir(:kastlex))
   def init(dir) do
-    f_offsets  = :filename.join(dir, "offsets.dets")
-    f_cgs      = :filename.join(dir, "cgs.dets")
-    f_progress = :filename.join(dir, "progress.dets")
+    f_offsets  = :erlang.binary_to_list(:filename.join(dir, "offsets.dets"))
+    f_cgs      = :erlang.binary_to_list(:filename.join(dir, "cgs.dets"))
+    f_progress = :erlang.binary_to_list(:filename.join(dir, "progress.dets"))
     common_open_args = [{:access, :read_write}]
     {:ok, _} = :dets.open_file(@offsets, [{:file, f_offsets} | common_open_args])
     {:ok, _} = :dets.open_file(@cgs, [{:file, f_cgs} | common_open_args])
