@@ -82,6 +82,7 @@ KASTLEX_ZOOKEEPER_CLUSTER=localhost:2181
 KASTLEX_HTTP_PORT=8092
 KASTLEX_PERMISSIONS_FILE_PATH=%{_conf_dir}/permissions.yml
 KASTLEX_PASSWD_FILE_PATH=%{_conf_dir}/passwd.yml
+KASTLEX_CG_CACHE_DIR=%{_sharedstatedir}/%{_service}
 KASTLEX_USE_HTTPS=false
 KASTLEX_CACERTFILE=%{_conf_dir}/ssl/ca-cert.crt
 KASTLEX_CERTFILE=%{_conf_dir}/ssl/server.crt
