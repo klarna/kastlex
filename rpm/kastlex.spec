@@ -33,6 +33,7 @@ mkdir -p %{buildroot}%{_log_dir}
 mkdir -p %{buildroot}%{_unitdir}
 mkdir -p %{buildroot}%{_conf_dir}
 mkdir -p %{buildroot}%{_sysconfdir}/sysconfig
+mkdir -p %{buildroot}%{_sysconfdir}/logrotate.d
 mkdir -p %{buildroot}%{_bindir}
 mkdir -p %{buildroot}%{_sharedstatedir}/%{_service}
 cp -r rel/%{_name} %{buildroot}%{_prefix}/
@@ -47,7 +48,9 @@ User=%{_user}
 Group=%{_group}
 Restart=on-failure
 EnvironmentFile=%{_sysconfdir}/sysconfig/%{_service}
-ExecStart=%{_prefix}/%{_name}/bin/%{_name} foreground
+ExecStart=%{_prefix}/%{_name}/bin/%{_name} start
+ExecStop=%{_prefix}/%{_name}/bin/%{_name} stop
+RemainAfterExit=true
 
 [Install]
 WantedBy=multi-user.target
@@ -87,6 +90,7 @@ KASTLEX_USE_HTTPS=false
 KASTLEX_CACERTFILE=%{_conf_dir}/ssl/ca-cert.crt
 KASTLEX_CERTFILE=%{_conf_dir}/ssl/server.crt
 KASTLEX_KEYFILE=%{_conf_dir}/ssl/server.key
+#KASTLEX_CG_EXCLUDE_REGEX=
 #KASTLEX_JWK_FILE=
 EOF
 
@@ -100,6 +104,21 @@ if [ \$# -eq 0 ]; then
 else
     %{_prefix}/%{_name}/bin/%{_name} \$@
 fi
+EOF
+
+cat > %{buildroot}%{_sysconfdir}/logrotate.d/%{_service} <<EOF
+%{_log_dir}/*.log {
+   daily
+   rotate 7
+   maxsize 100M
+   minsize 1M
+   copytruncate
+   delaycompress
+   compress
+   notifempty
+   dateext
+   missingok
+}
 EOF
 
 %clean
@@ -130,5 +149,6 @@ fi
 %{_unitdir}/%{_service}.service
 %config(noreplace) %{_conf_dir}/*
 %config(noreplace) %{_sysconfdir}/sysconfig/%{_service}
+%config(noreplace) %{_sysconfdir}/logrotate.d/%{_service}
 %attr(0700,%{_user},%{_group}) %dir %{_sharedstatedir}/%{_service}
 %attr(0755,%{_user},%{_group}) %dir %{_log_dir}

@@ -25,7 +25,8 @@ defmodule Kastlex.Mixfile do
     [mod: {Kastlex, []},
      applications: [:logger, :phoenix, :phoenix_pubsub, :phoenix_html, :cowboy,
                     :gettext, :yamerl, :yaml_elixir, :comeonin, :erlzk, :brod,
-                    :kafka_protocol, :supervisor3, :snappyer, :guardian, :ssl]]
+                    :kafka_protocol, :supervisor3, :snappyer, :guardian, :ssl,
+                    :observer, :logger_file_backend, :observer_cli, :recon]]
   end
 
   # Specifies which paths to compile per environment.
@@ -36,6 +37,9 @@ defmodule Kastlex.Mixfile do
     [{:phoenix, "~> 1.2"},
      {:phoenix_pubsub, "~> 1.0"},
      {:phoenix_live_reload, "~> 1.0", only: :dev},
+     {:logger_file_backend, "0.0.9", only: :prod},
+     {:observer_cli, "~> 1.0.8"},
+     {:recon, "~> 2.3.2"},
      {:gettext, "~> 0.12"},
      {:phoenix_html, "~> 2.8.0"},
      {:cowboy, "~> 1.0"},

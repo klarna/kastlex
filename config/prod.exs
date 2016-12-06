@@ -8,5 +8,14 @@ config :kastlex, Kastlex.Endpoint,
 
 config :kastlex, :serve_endpoints, true
 
-config :logger, level: :info
+config :logger,
+  backends: [{LoggerFileBackend, :kastlex}]
+
+config :logger, :kastlex,
+  path: "/var/log/kastlex/kastlex.log",
+  level: :info,
+  format: "$time [$level] $metadata $message\n",
+  metadata: [:request_id, :remote_ip],
+  handle_otp_reports: true,
+  handle_sasl_reports: true
 
