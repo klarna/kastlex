@@ -19,9 +19,11 @@ defmodule Kastlex do
     permissions_file_path = system_env("KASTLEX_PERMISSIONS_FILE_PATH", "permissions.yml")
     passwd_file_path = system_env("KASTLEX_PASSWD_FILE_PATH", "passwd.yml")
     cg_cache_dir = system_env("KASTLEX_CG_CACHE_DIR", :priv)
+    cg_exclude_regex = system_env("KASTLEX_CG_EXCLUDE_REGEX", nil)
     Application.put_env(:kastlex, :permissions_file_path, permissions_file_path)
     Application.put_env(:kastlex, :passwd_file_path, passwd_file_path)
     Application.put_env(:kastlex, :cg_cache_dir, cg_cache_dir)
+    Application.put_env(:kastlex, :cg_exclude_regex, cg_exclude_regex)
 
     brod_client_config = [{:allow_topic_auto_creation, false},
                           {:auto_start_producers, true}]

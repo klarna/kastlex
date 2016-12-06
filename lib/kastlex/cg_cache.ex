@@ -85,6 +85,20 @@ defmodule Kastlex.CgCache do
     :ok
   end
 
+  def maybe_delete_excluded(nil), do: :ok
+  def maybe_delete_excluded(exc) do
+    Enum.each(get_groups(),
+      fn(group_id) ->
+        case exc.(group_id) do
+          true ->
+            :dets.delete(@cgs, group_id)
+            :dets.delete(@offsets, group_id)
+          false ->
+            :ok
+        end
+      end)
+  end
+
   defp lookup(table, key, default) do
     case :dets.lookup(table, key) do
       [] -> default
@@ -97,7 +111,7 @@ defmodule Kastlex.CgCache do
   defp to_maps([{_, _} | _] = x), do: Map.new(:lists.map(&to_maps/1, x))
   defp to_maps({k, v}), do: {k, maybe_nil(v)}
 
-  defp maybe_nil(:undefined), do: :nil
+  defp maybe_nil(:undefined), do: nil
   defp maybe_nil(value), do: value
 
   defp get_lagging(topic, partition, offset) do

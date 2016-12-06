@@ -33,21 +33,39 @@ defmodule Kastlex.CgStatusCollector do
 
   def init(@topic, _) do
     committed_offsets = Kastlex.CgCache.get_progress()
-    {:ok, committed_offsets, %{}}
+    cg_exclude_regex = Application.get_env(:kastlex, :cg_exclude_regex, nil)
+    exclude =
+      case cg_exclude_regex do
+        nil ->
+          nil
+        regex ->
+          re = Regex.compile!(regex)
+          fn(group_id) -> Regex.match?(re, group_id) end
+      end
+    :ok = Kastlex.CgCache.maybe_delete_excluded(exclude)
+    {:ok, committed_offsets, %{:exclude => exclude}}
   end
 
-  def handle_message(partition, msg, state) do
+  def handle_message(partition, msg, %{:exclude => exclude} = state) do
     key_bin = kafka_message(msg, :key)
     value_bin = kafka_message(msg, :value)
     offset = kafka_message(msg, :offset)
     {tag, key, value} = :kpro_consumer_group.decode(key_bin, value_bin)
-    case tag do
-      :offset -> Kastlex.CgCache.committed_offset(key, value)
-      :group -> Kastlex.CgCache.new_cg_status(key, value)
+    case is_excluded(exclude, key[:group_id]) do
+      true ->
+        {:ok, :ack, state}
+      false ->
+        case tag do
+          :offset -> Kastlex.CgCache.committed_offset(key, value)
+          :group -> Kastlex.CgCache.new_cg_status(key, value)
+        end
+        Kastlex.CgCache.update_progress(partition, offset)
+        {:ok, :ack, state}
     end
-    Kastlex.CgCache.update_progress(partition, offset)
-    {:ok, :ack, state}
   end
+
+  defp is_excluded(nil, _group_id), do: false
+  defp is_excluded(exc,  group_id), do: exc.(group_id)
 
 end
 
