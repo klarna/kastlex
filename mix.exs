@@ -26,7 +26,8 @@ defmodule Kastlex.Mixfile do
      applications: [:logger, :phoenix, :phoenix_pubsub, :phoenix_html, :cowboy,
                     :gettext, :yamerl, :yaml_elixir, :comeonin, :erlzk, :brod,
                     :kafka_protocol, :supervisor3, :snappyer, :guardian, :ssl,
-                    :observer, :logger_file_backend, :observer_cli, :recon]]
+                    :observer, :logger_file_backend, :runtime_tools, :observer_cli,
+                    :recon]]
   end
 
   # Specifies which paths to compile per environment.
