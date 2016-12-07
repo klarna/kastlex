@@ -69,8 +69,11 @@ defmodule Kastlex.CgCache do
     :dets.insert(@progress, {partition, offset})
   end
 
-  def get_progress() do
-    :dets.foldl(fn({p, o}, acc) -> [{p,o} | acc] end, [], @progress)
+  def get_progress(partition) do
+    case :dets.lookup(@progress, partition) do
+      [{_, offset}] -> offset
+      _             -> false
+    end
   end
 
   def init(:priv), do: init(:code.priv_dir(:kastlex))
@@ -83,6 +86,12 @@ defmodule Kastlex.CgCache do
     {:ok, _} = :dets.open_file(@cgs, [{:file, f_cgs} | common_open_args])
     {:ok, _} = :dets.open_file(@progress, [{:file, f_progress} | common_open_args])
     :ok
+  end
+
+  def close() do
+    _ = :dets.close(@offsets)
+    _ = :dets.close(@cgs)
+    _ = :dets.close(@progress)
   end
 
   def maybe_delete_excluded(nil), do: :ok

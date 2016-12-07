@@ -264,7 +264,7 @@ var app = new Vue(
         },
         function(response){ // error
           this.last_rsp = JSON.stringify(response, null, 2);
-          this.last_rsp_ok = true;
+          this.last_rsp_ok = false;
           this.topics = [];
         });
     }
