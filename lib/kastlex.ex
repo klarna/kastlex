@@ -14,7 +14,6 @@ defmodule Kastlex do
     maybe_init_https(System.get_env("KASTLEX_USE_HTTPS"))
     maybe_set_secret_key_base(System.get_env("KASTLEX_SECRET_KEY_BASE"))
     kafka_endpoints = parse_endpoints(System.get_env("KASTLEX_KAFKA_CLUSTER"), [{'localhost', 9092}])
-    zk_cluster = parse_endpoints(System.get_env("KASTLEX_ZOOKEEPER_CLUSTER"), [{'localhost', 2181}])
 
     permissions_file_path = system_env("KASTLEX_PERMISSIONS_FILE_PATH", "permissions.yml")
     passwd_file_path = system_env("KASTLEX_PASSWD_FILE_PATH", "passwd.yml")
@@ -34,9 +33,7 @@ defmodule Kastlex do
       supervisor(Kastlex.Endpoint, []),
       supervisor(Phoenix.PubSub.PG2, [Kastlex.PubSub, []]),
       worker(Kastlex.Users, []),
-      worker(Kastlex.MetadataCache, [%{zk_cluster: zk_cluster}]),
-      worker(Kastlex.OffsetsCache, [%{brod_client_id: :kastlex}]),
-      worker(Kastlex.CgStatusCollector, [%{brod_client_id: :kastlex}]),
+      supervisor(Kastlex.Collectors, [])
     ]
 
     opts = [strategy: :one_for_one, name: Kastlex.Supervisor]
@@ -58,15 +55,6 @@ defmodule Kastlex do
 
   def reload() do
     Kastlex.Users.reload()
-  end
-
-  defp parse_endpoints(nil, default), do: default
-  defp parse_endpoints(endpoints, _default) do
-    endpoints
-      |> String.split(",")
-      |> Enum.map(&String.split(&1, ":"))
-      |> Enum.map(fn([host, port]) -> {:erlang.binary_to_list(host),
-                                       :erlang.binary_to_integer(port)} end)
   end
 
   defp maybe_init_https(nil), do: :ok
@@ -93,4 +81,14 @@ defmodule Kastlex do
       value -> value
     end
   end
+
+  defp parse_endpoints(nil, default), do: default
+  defp parse_endpoints(endpoints, _default) do
+    endpoints
+      |> String.split(",")
+      |> Enum.map(&String.split(&1, ":"))
+      |> Enum.map(fn([host, port]) -> {:erlang.binary_to_list(host),
+                                       :erlang.binary_to_integer(port)} end)
+  end
+
 end

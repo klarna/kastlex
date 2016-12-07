@@ -4,32 +4,37 @@ defmodule Kastlex.CgStatusCollector do
   use GenServer
   import Record, only: [defrecord: 2, extract: 2]
   defrecord :kafka_message_set, extract(:kafka_message_set, from_lib: "brod/include/brod.hrl")
+  defrecord :kafka_fetch_error, extract(:kafka_fetch_error, from_lib: "brod/include/brod.hrl")
   defrecord :kafka_message, extract(:kafka_message, from_lib: "brod/include/brod.hrl")
 
   @server __MODULE__
   @topic "__consumer_offsets"
+  @resubscribe_delay 10_000
 
   def start_link(options) do
     GenServer.start_link(__MODULE__, options, [name: @server])
   end
 
   def init(options) do
+    send self, {:post_init, options}
+    {:ok, %{}}
+  end
+
+  def handle_info({:post_init, options}, state) do
     Kastlex.MetadataCache.sync()
+    cache_dir = Application.get_env(:kastlex, :cg_cache_dir, :priv)
+    :ok = Kastlex.CgCache.init(cache_dir)
     {:ok, topics} = Kastlex.MetadataCache.get_topics()
     case Enum.find(topics, nil, fn(x) -> x.topic == @topic end) do
       nil ->
         Logger.info "#{@topic} topic not found, skip cg_status_collector"
-        :ignore
       _ ->
-        send self(), {:post_init, options}
-        {:ok, %{}}
+        send self(), {:post_init2, options}
     end
+    {:noreply, state}
   end
-
-  def handle_info({:post_init, options}, state) do
+  def handle_info({:post_init2, options}, state) do
     client = options.brod_client_id
-    cache_dir = Application.get_env(:kastlex, :cg_cache_dir, :priv)
-    :ok = Kastlex.CgCache.init(cache_dir)
     cg_exclude_regex = Application.get_env(:kastlex, :cg_exclude_regex, nil)
     exclude =
       case cg_exclude_regex do
@@ -72,11 +77,8 @@ defmodule Kastlex.CgStatusCollector do
                  }
         __MODULE__.subscriber_loop(state)
       {:error, _reason} ->
-        # consumer down, client down, etc.
-        # try again later
-        :timer.sleep(10_000)
-        Logger.info "cg collector #{partition} retry subscription"
-        __MODULE__.subscriber(client, partition, exclude)
+        # consumer down, client down, etc. try again later
+        resubscribe(client, partition, exclude)
     end
   end
 
@@ -86,7 +88,7 @@ defmodule Kastlex.CgStatusCollector do
                          consumer_pid: pid
                        } = state) do
     receive do
-      {^pid, msg_set} ->
+      {^pid, msg_set} when Record.is_record(msg_set, :kafka_message_set) ->
         messages = compact_messages(msg_set)
         last_offset = kafka_message(List.last(messages), :offset)
         ## ack now so consumer can fetch more while we are processing the compacted ones
@@ -95,6 +97,8 @@ defmodule Kastlex.CgStatusCollector do
         ## commit offset locally in dets
         Kastlex.CgCache.update_progress(partition, last_offset)
         __MODULE__.subscriber_loop(state)
+      {^pid, fetch_error} when Record.is_record(fetch_error, :kafka_fetch_error) ->
+        resubscribe(client, partition, exclude)
       {:DOWN, _ref, :process, ^pid, _reason} ->
         ## consumer pid died, we start over
         __MODULE__.subscriber(client, partition, exclude)
@@ -106,6 +110,11 @@ defmodule Kastlex.CgStatusCollector do
         __MODULE__.subscriber_loop(state)
     end
     __MODULE__.subscriber_loop(state)
+  end
+
+  defp resubscribe(client, partition, exclude) do
+    :timer.sleep(@resubscribe_delay)
+    __MODULE__.subscriber(client, partition, exclude)
   end
 
   ## compaction might have not yet done in kafka log segment

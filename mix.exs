@@ -38,7 +38,7 @@ defmodule Kastlex.Mixfile do
     [{:phoenix, "~> 1.2"},
      {:phoenix_pubsub, "~> 1.0"},
      {:phoenix_live_reload, "~> 1.0", only: :dev},
-     {:logger_file_backend, "0.0.9", only: :prod},
+     {:logger_file_backend, "0.0.9"},
      {:observer_cli, "~> 1.0.8"},
      {:recon, "~> 2.3.2"},
      {:gettext, "~> 0.12"},

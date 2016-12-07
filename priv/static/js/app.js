@@ -42,9 +42,9 @@ Vue.component('treeitem', {
 // assume all and insync are both sorted
 function getOutOfSyncReplicas(all, insync){
   var r = [];
-  for(i = 0; i<all.length; ){
-    for(j = 0; j<insync.length; ){
-      if(all[i] == insync[j]){
+  for(var i = 0; i < all.length; ) {
+    for(var j = 0; j < insync.length && i < all.length; ) {
+      if(all[i] == insync[j]) {
         i++;
         j++;
       }
