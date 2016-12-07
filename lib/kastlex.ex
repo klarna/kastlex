@@ -57,6 +57,15 @@ defmodule Kastlex do
     Kastlex.Users.reload()
   end
 
+  def parse_endpoints(nil, default), do: default
+  def parse_endpoints(endpoints, _default) do
+    endpoints
+      |> String.split(",")
+      |> Enum.map(&String.split(&1, ":"))
+      |> Enum.map(fn([host, port]) -> {:erlang.binary_to_list(host),
+                                       :erlang.binary_to_integer(port)} end)
+  end
+
   defp maybe_init_https(nil), do: :ok
   defp maybe_init_https("true") do
     port = system_env("KASTLEX_HTTPS_PORT", 8093)
@@ -81,14 +90,4 @@ defmodule Kastlex do
       value -> value
     end
   end
-
-  defp parse_endpoints(nil, default), do: default
-  defp parse_endpoints(endpoints, _default) do
-    endpoints
-      |> String.split(",")
-      |> Enum.map(&String.split(&1, ":"))
-      |> Enum.map(fn([host, port]) -> {:erlang.binary_to_list(host),
-                                       :erlang.binary_to_integer(port)} end)
-  end
-
 end

@@ -6,7 +6,7 @@ defmodule Kastlex.Collectors do
   end
 
   def init(_) do
-    zk_cluster = parse_endpoints(System.get_env("KASTLEX_ZOOKEEPER_CLUSTER"), [{'localhost', 2181}])
+    zk_cluster = Kastlex.parse_endpoints(System.get_env("KASTLEX_ZOOKEEPER_CLUSTER"), [{'localhost', 2181}])
     children =
       [ child_spec(Kastlex.MetadataCache, [%{zk_cluster: zk_cluster}]),
         child_spec(Kastlex.OffsetsCache, [%{brod_client_id: :kastlex}]),
@@ -27,14 +27,4 @@ defmodule Kastlex.Collectors do
      :worker,
      [mod]}
   end
-
-  defp parse_endpoints(nil, default), do: default
-  defp parse_endpoints(endpoints, _default) do
-    endpoints
-      |> String.split(",")
-      |> Enum.map(&String.split(&1, ":"))
-      |> Enum.map(fn([host, port]) -> {:erlang.binary_to_list(host),
-                                       :erlang.binary_to_integer(port)} end)
-  end
-
 end
