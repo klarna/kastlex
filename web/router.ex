@@ -27,8 +27,6 @@ defmodule Kastlex.Router do
 
   scope "/", Kastlex do
     pipe_through :api
-    post "/rest/kafka/v0/:topic", KastleController, :create
-    post "/rest/kafka/v0/:topic/:partition", KastleController, :create
     post "/login", LoginController, :login
     get "/favicon.ico", CatchAllController, :favicon
   end
