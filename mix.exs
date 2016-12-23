@@ -4,7 +4,7 @@ defmodule Kastlex.Mixfile do
   def project do
     [app: :kastlex,
      description: "Apache Kafka REST Proxy",
-     version: "1.1.0",
+     version: "1.1.1",
      elixir: "~> 1.0",
      elixirc_paths: elixirc_paths(Mix.env),
      compilers: [:phoenix, :gettext] ++ Mix.compilers,
@@ -17,7 +17,8 @@ defmodule Kastlex.Mixfile do
   defp aliases do
     [c: "compile",
      rpm: &rpm/1,
-     version: &version/1
+     version: &version/1,
+     hashpw: &hashpw/1
     ]
   end
 
@@ -77,6 +78,11 @@ defmodule Kastlex.Mixfile do
         Mix.shell.info("#{x}")
     end
     Mix.shell.info("#{Mix.Project.config()[:version]}")
+  end
+
+  defp hashpw(args) do
+    Mix.Tasks.Loadpaths.run(args)
+    Mix.shell.info("#{Comeonin.Bcrypt.hashpwsalt(to_string(args))}")
   end
 
 end

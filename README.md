@@ -174,9 +174,9 @@ Here we specify password hashes for each user.
 
 `user` has password `user`, `admin` has password `admin`. Simple.
 
-Passwords are generated in Kastlex shell:
+Generate password:
 
-    Comeonin.Bcrypt.hashpwsalt("difficult2guess")
+    mix hashpw difficult2guess
 
 To obtain a token users need to login (submit a form with 2 fields, username and password):
 
@@ -195,19 +195,17 @@ Then you can submit authenticated requests via curl as:
 # Deployment to production
 
 ## Generate a JWK
-In Kastlex shell
 
-    jwk = JOSE.JWK.generate_key({:ec, :secp256r1})
-    JOSE.JWK.to_file("secret.jwk", jwk)
+    openssl ecparam -name secp521r1 -genkey -noout -out jwk.pem
 
 ## Generate a secret key base
 
-    printf "%s" $(openssl rand -base64 64) > secret.key
+    printf "%s" $(openssl rand -base64 32 | tr -d =) > secret_base.key
 
 ## Set the following varibles for Kastlex environment
 
-    KASTLEX_SECRET_KEY_FILE=/path/to/secret.key
-    KASTLEX_JWK_FILE=/path/to/secret.jwk
+    KASTLEX_SECRET_KEY_BASE=/path/to/secret_base.key
+    KASTLEX_JWK_FILE=/path/to/jwk.pem
     KASTLEX_PERMISSIONS_FILE_PATH=/path/to/permissions.yml
     KASTLEX_PASSWD_FILE_PATH=/path/to/passwd.yml
     KASTLEX_KAFKA_CLUSTER=kafka-host1:9092,kafka-host2:9092
