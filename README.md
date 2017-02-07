@@ -20,12 +20,18 @@ Default app port is 8092.
 
 ## Produce messages
 
+    POST /api/v1/messages/:topic
     POST /api/v1/messages/:topic/:partition
 
+With the first version KastleX will pick a random partition to produce message to.  
 Use `Content-type: application/binary`.  
 Key is supplied as query parameter `key`.  
 Value is request body.  
 Successful response: HTTP Status 204 and empty body.  
+
+cURL example (-d implies POST):
+
+    curl -s -i -H "Content-Type: application/binary" localhost:8092/api/v1/messages/foo -d bar
 
 ## Fetch messages
 

@@ -9,9 +9,7 @@ anonymous:
   show_urps: all
   list_groups: true
   show_group: all
-user1:
-  produce:
-    - kastlex
+  produce: all
 admin:
   reload: true
 

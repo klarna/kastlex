@@ -43,6 +43,7 @@ defmodule Kastlex.Router do
     get  "/brokers", BrokerController, :list_brokers
     get  "/brokers/:broker", BrokerController, :show_broker
     get  "/offsets/:topic/:partition", OffsetController, :show_offsets
+    post "/messages/:topic", MessageController, :produce
     post "/messages/:topic/:partition", MessageController, :produce
     get  "/messages/:topic/:partition/:offset", MessageController, :fetch
     get  "/urp", UrpController, :list_urps

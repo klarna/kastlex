@@ -6,23 +6,59 @@ defmodule Kastlex.API.V1.MessageController do
 
   plug Kastlex.Plug.EnsurePermissions
 
-  # TODO: partitioner
   def produce(conn, %{"topic" => topic, "partition" => partition} = params) do
     {partition, _} = Integer.parse(partition)
     key = Map.get(params, "key", "")
     {:ok, value, conn} = read_body(conn)
-    case :brod.produce_sync(:kastlex, topic, partition, key, value) do
+    try_produce(conn, topic, [partition], key, value, nil)
+  end
+
+  # no partition, use random partitioner
+  def produce(conn, %{"topic" => topic} = params) do
+    key = Map.get(params, "key", "")
+    {:ok, value, conn} = read_body(conn)
+    case :brod_client.get_partitions_count(:kastlex, topic) do
+      {:ok, partitions_cnt} ->
+        partitions = :lists.seq(0, partitions_cnt - 1) |> Enum.shuffle
+        try_produce(conn, topic, partitions, key, value, nil)
+      {:error, :UnknownTopicOrPartition} = error ->
+        Logger.error("#{inspect error}")
+        send_json(conn, 404, Map.new([error]))
+      {:error, _} = error ->
+        Logger.error("#{inspect error}")
+        send_json(conn, 503, Map.new([error]))
+    end
+  end
+
+  defp try_produce(conn, _topic, [], _key, _value, error) do
+    Logger.error("#{inspect error}")
+    send_json(conn, 503, Map.new([error]))
+  end
+  defp try_produce(conn, topic, [p | partitions], key, value, _last_error) do
+    case :brod.produce_sync(:kastlex, topic, p, key, value) do
       :ok ->
         send_resp(conn, 204, "")
-      {:error, :UnknownTopicOrPartition} ->
-        send_json(conn, 404, %{error: "Unknown topic or partition"})
-      {:error, {:producer_not_found, _topic}} ->
-        send_json(conn, 404, %{error: "Unknown topic"})
-      {:error, {:producer_not_found, _topic, _partition}} ->
-        send_json(conn, 404, %{error: "Unknown partition"})
-      {:error, reason} ->
-        Logger.error "#{reason}"
-        send_json(conn, 503, %{error: "Service unavailable"})
+      {:error, :UnknownTopicOrPartition} = error ->
+        Logger.error("#{inspect error}")
+        # does not make sense to try other partitions
+        send_json(conn, 404, Map.new([error]))
+      {:error, {:producer_not_found, _topic}} = error ->
+        Logger.error("#{inspect error}")
+        # does not make sense to try other partitions
+        send_json(conn, 404, Map.new([{:error, :UnknownTopicOrPartition}]))
+      {:error, {:producer_not_found, _topic, _p}} = error ->
+        Logger.error("#{inspect error}")
+        # does not make sense to try other partitions
+        send_json(conn, 404, Map.new([{:error, :UnknownTopicOrPartition}]))
+      {:error, :LeaderNotAvailable} = error ->
+        Logger.error("#{inspect error}")
+        try_produce(conn, topic, partitions, key, value, error)
+      {:error, :NotLeaderForPartition} = error ->
+        Logger.error("#{inspect error}")
+        try_produce(conn, topic, partitions, key, value, error)
+      error ->
+        Logger.error("#{inspect error}")
+        send_json(conn, 503, Map.new([error]))
     end
   end
 
