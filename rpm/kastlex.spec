@@ -70,6 +70,7 @@ anonymous:
   show_group: all
 admin:
   reload: true
+  revoke: true
 EOF
 
 cat > %{buildroot}%{_conf_dir}/passwd.yml <<EOF

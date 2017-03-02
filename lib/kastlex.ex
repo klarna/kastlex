@@ -28,11 +28,15 @@ defmodule Kastlex do
     cg_cache_dir = system_env("KASTLEX_CG_CACHE_DIR", :priv)
     Logger.info "Consumer groups cache directory: #{cg_cache_dir}"
     cg_exclude_regex = system_env("KASTLEX_CG_EXCLUDE_REGEX", nil)
-    Logger.info "Consumer groups exclude regexp: #{cg_exclude_regex}"
+    maybe_log_parameter("Consumer groups exclude regexp", cg_exclude_regex)
+
     Application.put_env(:kastlex, :permissions_file_path, permissions_file_path)
     Application.put_env(:kastlex, :passwd_file_path, passwd_file_path)
     Application.put_env(:kastlex, :cg_cache_dir, cg_cache_dir)
     Application.put_env(:kastlex, :cg_exclude_regex, cg_exclude_regex)
+
+    maybe_configure_token_storage(System.get_env("KASTLEX_ENABLE_TOKEN_STORAGE"))
+    maybe_set_token_ttl(System.get_env("KASTLEX_TOKEN_TTL_SECONDS"))
 
     brod_client_config = [{:allow_topic_auto_creation, false},
                           {:auto_start_producers, true}]
@@ -43,6 +47,7 @@ defmodule Kastlex do
       supervisor(Kastlex.Endpoint, []),
       supervisor(Phoenix.PubSub.PG2, [Kastlex.PubSub, []]),
       worker(Kastlex.Users, []),
+      worker(Kastlex.TokenStorage, [%{brod_client_id: :kastlex}]),
       supervisor(Kastlex.Collectors, [])
     ]
 
@@ -74,6 +79,11 @@ defmodule Kastlex do
       |> Enum.map(&String.split(&1, ":"))
       |> Enum.map(fn([host, port]) -> {:erlang.binary_to_list(host),
                                        :erlang.binary_to_integer(port)} end)
+  end
+
+  def token_storage_enabled?() do
+    guardian = Application.fetch_env!(:guardian, Guardian)
+    guardian[:hooks] == Kastlex.TokenStorage
   end
 
   defp maybe_init_https(nil), do: :ok
@@ -110,10 +120,38 @@ defmodule Kastlex do
                         Keyword.put(guardian, :secret_key, jwk))
   end
 
+  defp maybe_configure_token_storage(nil), do: :ok
+  defp maybe_configure_token_storage("1") do
+    Logger.info "OS env override: enabling token storage"
+    guardian = Application.fetch_env!(:guardian, Guardian)
+    Application.put_env(:guardian, Guardian,
+                        Keyword.put(guardian, :hooks, Kastlex.TokenStorage))
+    case System.get_env("KASTLEX_TOKEN_STORAGE_TOPIC") do
+      nil -> :ok
+      topic ->
+        Application.put_env(:kastlex, Kastlex.TokenStorage, [topic: topic])
+        Logger.info "Custom token storage topic: #{topic}"
+    end
+  end
+  defp maybe_configure_token_storage(_), do: :ok
+
+  defp maybe_set_token_ttl(nil), do: :ok
+  defp maybe_set_token_ttl(ttl) do
+    Logger.info "Using custom token ttl: #{ttl} seconds"
+    guardian = Application.fetch_env!(:guardian, Guardian)
+    Application.put_env(:guardian, Guardian,
+                        Keyword.put(guardian, :ttl, {ttl, :seconds}))
+  end
+
   defp system_env(variable, default) do
     case System.get_env(variable) do
       nil -> default
       value -> value
     end
+  end
+
+  defp maybe_log_parameter(_desc, nil), do: :ok
+  defp maybe_log_parameter(desc, variable) do
+    Logger.info "#{desc}: #{variable}"
   end
 end

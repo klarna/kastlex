@@ -9,7 +9,8 @@ anonymous:
   show_urps: all
   list_groups: true
   show_group: all
-  produce: all
 admin:
+  produce: all
   reload: true
+  revoke: true
 

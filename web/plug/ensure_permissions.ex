@@ -51,6 +51,7 @@ defmodule Kastlex.Plug.EnsurePermissions do
     has_2nd_level_permissions?(action, user, group_id)
   end
   defp has_permissions?(:reload = action, "GET", user, _), do: user[action] == true
+  defp has_permissions?(:revoke = action, "DELETE", user, _), do: user[action] == true
   defp has_permissions?(_, _, _, _), do: false
 
   defp has_2nd_level_permissions?(action, user, item) do

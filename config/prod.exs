@@ -14,7 +14,7 @@ config :logger,
 config :logger, :kastlex,
   path: "/var/log/kastlex/kastlex.log",
   level: :info,
-  format: "$time [$level] $metadata $message\n",
+  format: "$time [$level] $metadata$message\n",
   metadata: [:request_id, :remote_ip],
   handle_otp_reports: true,
   handle_sasl_reports: true

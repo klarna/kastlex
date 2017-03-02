@@ -160,6 +160,7 @@ Example permissions.yml:
         - kastlex
     admin:
       reload: true
+      revoke: true
 
 Anonymous user can do pretty much everything except writing data to kafka.
 
@@ -191,12 +192,39 @@ To obtain a token users need to login (submit a form with 2 fields, username and
 
 Get token directly into a shell variable (requires `jq`):
 
-    JWT=$(curl -s localhost:8092/login --data "username=user1&password=user1" | jq .token | tr -d \")
+    JWT=$(curl -s localhost:8092/login --data "username=user1&password=user1" | jq -r .token)
 
 Then you can submit authenticated requests via curl as:
 
     curl -H "Authorization: Bearer $JWT" localhost:8092/admin/reload
     curl -H "Authorization: Bearer $JWT" localhost:8092/api/v1/messages/kastlex/0 -H "Content-type: application/binary" -d 1
+
+# Token storage
+It is possible to run KastleX in 2 modes: when tokens are issued with relatively short timespan and administrator does not have any control over them, and when tokens are long-lived, but persisted and can be revoked on demand.
+
+KastleX is using a compacted topic (cleanup_policy=compact) with a single partition in Kafka as a token storage. In order to enable token storage, add the following hook config for Guardian application:
+
+    hooks: Kastlex.TokenStorage
+
+And configuration for TokenStorage:
+
+    config :kastlex, Kastlex.TokenStorage,
+      topic: "_kastlex_tokens"
+
+Alternatively set the following environment variable:
+
+    KASTLEX_ENABLE_TOKEN_STORAGE=1
+
+These 2 can be used to alter default storage topic name and default ttl:
+
+    KASTLEX_TOKEN_STORAGE_TOPIC=_kastlex_tokens
+    KASTLEX_TOKEN_TTL_SECONDS=315360000
+
+Administrator can use the following API endpoint to revoke a token:
+
+    DELETE  /admin/tokens/:username
+
+Correspinding permission item in permissions.yml file is 'revoke'.
 
 # Deployment to production
 

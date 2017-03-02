@@ -18,9 +18,12 @@ config :kastlex, Kastlex.MetadataCache,
   zk_chroot: "/",
   zk_session_timeout: 30000
 
+config :kastlex, Kastlex.TokenStorage,
+  topic: "_kastlex_tokens"
+
 # Configures Elixir's Logger
 config :logger, :console,
-  format: "$time [$level] $metadata $message\n",
+  format: "$time [$level] $metadata$message\n",
   metadata: [:request_id, :remote_ip],
   handle_otp_reports: true,
   handle_sasl_reports: true

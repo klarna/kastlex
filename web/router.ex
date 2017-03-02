@@ -34,6 +34,7 @@ defmodule Kastlex.Router do
   scope "/admin", as: :admin, alias: Kastlex.Admin do
     pipe_through [:api, :auth]
     get "/reload", AdminController, :reload
+    delete "/tokens/:username", AdminController, :revoke
   end
 
   scope "/api/v1", as: :api_v1, alias: Kastlex.API.V1 do

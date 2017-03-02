@@ -6,4 +6,9 @@ defmodule Kastlex.Admin.AdminController do
     Kastlex.reload()
     send_resp(conn, 204, "")
   end
+
+  def revoke(conn, %{"username" => user}) do
+    :ok = Kastlex.TokenStorage.revoke("user:#{user}")
+    send_resp(conn, 204, "")
+  end
 end
