@@ -109,12 +109,14 @@ defmodule Kastlex.TokenStorage do
               ]
     case :brod.subscribe(state.client, self(), @topic, 0, options) do
       {:ok, pid} ->
-        Logger.debug "subscribed on #{@topic}"
+        Logger.info "subscribed on #{@topic}"
         _ = Process.monitor(pid)
         {:noreply, Map.put(state, :consumer, pid)}
-      {:error, _reason} ->
+      {:error, reason} ->
+        Logger.error "failed to subscribe on #{@topic}: #{inspect reason}"
         # consumer down, client down, etc. try again later
         resubscribe()
+        {:noreply, state}
     end
   end
 

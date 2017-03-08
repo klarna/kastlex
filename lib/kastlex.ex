@@ -138,6 +138,7 @@ defmodule Kastlex do
   defp maybe_set_token_ttl(nil), do: :ok
   defp maybe_set_token_ttl(ttl) do
     Logger.info "Using custom token ttl: #{ttl} seconds"
+    {ttl, _} = Integer.parse(ttl)
     guardian = Application.fetch_env!(:guardian, Guardian)
     Application.put_env(:guardian, Guardian,
                         Keyword.put(guardian, :ttl, {ttl, :seconds}))

@@ -4,7 +4,7 @@ defmodule Kastlex.Mixfile do
   def project do
     [app: :kastlex,
      description: "Apache Kafka REST Proxy",
-     version: "1.2.0",
+     version: "1.2.1",
      elixir: "~> 1.0",
      elixirc_paths: elixirc_paths(Mix.env),
      compilers: [:phoenix, :gettext] ++ Mix.compilers,
@@ -48,7 +48,7 @@ defmodule Kastlex.Mixfile do
      {:yaml_elixir, "~> 1.2"},
      {:brod, "~> 2.2.0"},
      {:distillery, "~> 0.10"},
-     {:guardian, git: "https://github.com/ueberauth/guardian.git", ref: "5f9488a"},
+     {:guardian, "~> 0.14.2"},
      {:erlzk, "~> 0.6.3"},
      {:comeonin, "~> 2.5"}
     ]
