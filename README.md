@@ -78,6 +78,7 @@ Optional parameters:
                 "topic": "kastlex",
                 "partition": 0,
                 "offset": 20,
+                "metadata_encoding": "text",
                 "metadata": "",
                 "high_wm_offset": 20,
                 "expire_time": 1473714215481,
@@ -88,6 +89,7 @@ Optional parameters:
             {
                 "subscription": {
                     "version": 0,
+                    "user_data_encoding": "text",
                     "user_data": "",
                     "topics": [
                         "kastlex"
@@ -99,6 +101,7 @@ Optional parameters:
                 "client_host": "/127.0.0.1",
                 "assignment": {
                     "version": 0,
+                    "user_data_encoding": "text",
                     "user_data": "",
                     "topic_partitions": {
                         "kastlex": [
