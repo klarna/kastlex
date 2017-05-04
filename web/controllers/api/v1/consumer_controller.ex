@@ -39,9 +39,7 @@ defmodule Kastlex.API.V1.ConsumerController do
       end
     end
     case Map.get(group, :status) do
-      nil ->
-        group
-      status ->
+      status when is_map(status) ->
         members =
           Map.get(status, :members)
             |> Enum.map(fn(member) ->
@@ -51,6 +49,8 @@ defmodule Kastlex.API.V1.ConsumerController do
                end)
         status = Map.put(status, :members, members)
         Map.put(group, :status, status)
+      _ ->
+        group
     end
   end
 
@@ -58,8 +58,7 @@ defmodule Kastlex.API.V1.ConsumerController do
     offsets = Map.get(group, :offsets)
     fix_fun = fn(offset) ->
       meta = Map.get(offset, :metadata)
-      is_text = String.valid?(meta)
-      case is_null(meta) or is_text do
+      case is_null(meta) or String.printable?(meta) do
         true ->
           Map.put(offset, :metadata_encoding, :text)
         false ->
