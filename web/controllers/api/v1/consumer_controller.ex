@@ -28,7 +28,7 @@ defmodule Kastlex.API.V1.ConsumerController do
             |> Map.put(:user_data, "")
             |> Map.put(:user_data_encoding, :text)
         false ->
-          case String.valid?(user_data) do
+          case String.printable?(user_data) do
             true ->
               Map.put(meta, :user_data_encoding, :text)
             false ->
