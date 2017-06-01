@@ -3,57 +3,67 @@ defmodule Kastlex do
 
   require Logger
 
-  @anon "anonymous"
-
   def start(_type, _args) do
     import Supervisor.Spec, warn: false
 
+    # http endpoint
     endpoint = Application.fetch_env!(:kastlex, Kastlex.Endpoint)
     http = endpoint[:http]
     port = system_env("KASTLEX_HTTP_PORT", http[:port])
     Logger.info "HTTP port: #{port}"
     http = Keyword.put(http, :port, port)
     Application.put_env(:kastlex, Kastlex.Endpoint, Keyword.put(endpoint, :http, http))
+    maybe_init_https(system_env("KASTLEX_USE_HTTPS", false, &s2b/1))
+    maybe_set_secret_key_base(system_env("KASTLEX_SECRET_KEY_BASE"))
+    maybe_set_guardian_secret_key(system_env("KASTLEX_JWK_FILE"))
 
-    maybe_init_https(System.get_env("KASTLEX_USE_HTTPS"))
-    maybe_set_secret_key_base(System.get_env("KASTLEX_SECRET_KEY_BASE"))
-    maybe_set_guardian_secret_key(System.get_env("KASTLEX_JWK_FILE"))
-    kafka_endpoints = parse_endpoints(System.get_env("KASTLEX_KAFKA_CLUSTER"), [{'localhost', 9092}])
-    Logger.info "Kafka endpoints: #{inspect kafka_endpoints}"
-
+    # authentication/authorization
     permissions_file_path = system_env("KASTLEX_PERMISSIONS_FILE_PATH", "permissions.yml")
     Logger.info "Permissions file path: #{permissions_file_path}"
+    Application.put_env(:kastlex, :permissions_file_path, permissions_file_path)
     passwd_file_path = system_env("KASTLEX_PASSWD_FILE_PATH", "passwd.yml")
     Logger.info "Passwd file path: #{passwd_file_path}"
+    Application.put_env(:kastlex, :passwd_file_path, passwd_file_path)
+
+    # consumer groups
     cg_cache_dir = system_env("KASTLEX_CG_CACHE_DIR", :priv)
     Logger.info "Consumer groups cache directory: #{cg_cache_dir}"
+    Application.put_env(:kastlex, :cg_cache_dir, cg_cache_dir)
     cg_exclude_regex = system_env("KASTLEX_CG_EXCLUDE_REGEX", nil)
     maybe_log_parameter("Consumer groups exclude regexp", cg_exclude_regex)
-
-    Application.put_env(:kastlex, :permissions_file_path, permissions_file_path)
-    Application.put_env(:kastlex, :passwd_file_path, passwd_file_path)
-    Application.put_env(:kastlex, :cg_cache_dir, cg_cache_dir)
     Application.put_env(:kastlex, :cg_exclude_regex, cg_exclude_regex)
 
-    maybe_configure_token_storage(System.get_env("KASTLEX_ENABLE_TOKEN_STORAGE"))
-    maybe_set_token_ttl(System.get_env("KASTLEX_TOKEN_TTL_SECONDS"))
+    # token storage
+    maybe_configure_token_storage(system_env("KASTLEX_ENABLE_TOKEN_STORAGE"))
+    maybe_set_token_ttl(system_env("KASTLEX_TOKEN_TTL_SECONDS"))
 
-    brod_client_config = [{:allow_topic_auto_creation, false},
-                          {:auto_start_producers, true}]
-    :ok = :brod.start_client(kafka_endpoints, :kastlex, brod_client_config)
+    # kafka connection
+    kafka_cluster = system_env("KASTLEX_KAFKA_CLUSTER", [{'localhost', 9092}], &parse_endpoints/1)
+    Logger.info "Kafka cluster: #{inspect kafka_cluster}"
+
+    brod_client_config = get_brod_client_config()
+    :ok = :brod.start_client(kafka_cluster, :kastlex, brod_client_config)
+
+    # zookeeper connection
+    zk_cluster = system_env("KASTLEX_ZOOKEEPER_CLUSTER", [{'localhost', 2181}], &parse_endpoints/1)
+    Logger.info "Zookeeper cluster: #{inspect zk_cluster}"
+    Application.put_env(:kastlex, :zk_cluster, zk_cluster)
 
     children = [
-      # Start the endpoint when the application starts
+      worker(Kastlex.Users, []),
+      worker(Kastlex.TokenStorage, []),
+      supervisor(Kastlex.Collectors, []),
       supervisor(Kastlex.Endpoint, []),
       supervisor(Phoenix.PubSub.PG2, [Kastlex.PubSub, []]),
-      worker(Kastlex.Users, []),
-      worker(Kastlex.TokenStorage, [%{brod_client_id: :kastlex}]),
-      supervisor(Kastlex.Collectors, [])
     ]
 
     opts = [strategy: :one_for_one, name: Kastlex.Supervisor]
     Supervisor.start_link(children, opts)
   end
+
+  def get_brod_client_id(), do: :kastlex
+
+  def get_zk_cluster(), do: Application.fetch_env!(:kastlex, :zk_cluster)
 
   # Tell Phoenix to update the endpoint configuration
   # whenever the application is updated.
@@ -62,23 +72,12 @@ defmodule Kastlex do
     :ok
   end
 
-  def get_user(name) do
-    Kastlex.Users.get_user(name)
-  end
+  def get_user(name), do: Kastlex.Users.get_user(name)
 
-  def get_anonymous(), do: get_user(@anon)
+  def get_anonymous(), do: Kastlex.Users.get_anonymous()
 
   def reload() do
     Kastlex.Users.reload()
-  end
-
-  def parse_endpoints(nil, default), do: default
-  def parse_endpoints(endpoints, _default) do
-    endpoints
-      |> String.split(",")
-      |> Enum.map(&String.split(&1, ":"))
-      |> Enum.map(fn([host, port]) -> {:erlang.binary_to_list(host),
-                                       :erlang.binary_to_integer(port)} end)
   end
 
   def token_storage_enabled?() do
@@ -86,8 +85,7 @@ defmodule Kastlex do
     guardian[:hooks] == Kastlex.TokenStorage
   end
 
-  defp maybe_init_https(nil), do: :ok
-  defp maybe_init_https("true") do
+  defp maybe_init_https(true) do
     Logger.info "Using HTTPS"
     port = system_env("KASTLEX_HTTPS_PORT", 8093)
     Logger.info "HTTPS port: #{port}"
@@ -120,8 +118,7 @@ defmodule Kastlex do
                         Keyword.put(guardian, :secret_key, jwk))
   end
 
-  defp maybe_configure_token_storage(nil), do: :ok
-  defp maybe_configure_token_storage("1") do
+  defp maybe_configure_token_storage(true) do
     Logger.info "OS env override: enabling token storage"
     guardian = Application.fetch_env!(:guardian, Guardian)
     Application.put_env(:guardian, Guardian,
@@ -144,10 +141,75 @@ defmodule Kastlex do
                         Keyword.put(guardian, :ttl, {ttl, :seconds}))
   end
 
+  def get_brod_client_config() do
+    ssl_config =
+    []
+      |> maybe_put(:cacertfile, system_env("KASTLEX_KAFKA_CACERTFILE"))
+      |> maybe_put(:certfile, system_env("KASTLEX_KAFKA_CERTFILE"))
+      |> maybe_put(:keyfile, system_env("KASTLEX_KAFKA_KEYFILE"))
+
+    Logger.info "brod ssl config: #{inspect ssl_config}"
+    ssl = case ssl_config do
+            [] -> system_env("KASTLEX_KAFKA_USE_SSL", false)
+            kw -> kw
+          end
+
+    sasl = get_brod_sasl_config(system_env("KASTLEX_KAFKA_SASL_FILE"))
+
+    producer_config =
+    []
+      |> maybe_put(:required_acks, system_env("KASTLEX_PRODUCER_REQUIRED_ACKS", nil, &s2i/1))
+      |> maybe_put(:ack_timeout, system_env("KASTLEX_PRODUCER_ACK_TIMEOUT", nil, &s2i/1))
+      |> maybe_put(:partition_buffer_limit, system_env("KASTLEX_PRODUCER_PARTITION_BUFFER_LIMIT", nil, &s2i/1))
+      |> maybe_put(:partition_onwire_limit, system_env("KASTLEX_PRODUCER_PARTITION_ONWIRE_LIMIT", nil, &s2i/1))
+      |> maybe_put(:max_batch_size, system_env("KASTLEX_PRODUCER_MAX_BATCH_SIZE", nil, &s2i/1))
+      |> maybe_put(:max_retries, system_env("KASTLEX_PRODUCER_MAX_RETRIES", nil, &s2i/1))
+      |> maybe_put(:retry_backoff_ms, system_env("KASTLEX_PRODUCER_RETRY_BACKOFF_MS", nil, &s2i/1))
+      |> maybe_put(:max_linger_ms, system_env("KASTLEX_PRODUCER_MAX_LINGER_MS", nil, &s2i/1))
+      |> maybe_put(:max_linger_count, system_env("KASTLEX_PRODUCER_MAX_LINGER_COUNT", nil, &s2i/1))
+
+    Logger.info "brod producer config: #{inspect producer_config}"
+
+    [allow_topic_auto_creation: false,
+     auto_start_producers: true,
+     default_producer_config: producer_config,
+     ssl: ssl,
+     sasl: sasl]
+  end
+
+  # Example file format (yaml):
+  # username: "foo",
+  # password: "bar"
+  defp get_brod_sasl_config(nil), do: :undefined
+  defp get_brod_sasl_config(file) do
+    try do
+      config = YamlElixir.read_from_file(file)
+      {:plain, config["username"], config["password"]}
+    rescue
+      e in RuntimeError ->
+        Logger.error("Error loading sasl config file: " <> e.message)
+        :undefined
+    catch
+      _code, value ->
+        Logger.error("Error loading sasl config file: #{inspect value}")
+    end
+  end
+
+  defp maybe_put(kw, _key, nil),  do: kw
+  defp maybe_put(kw, key, value), do: Keyword.put(kw, key, value)
+
+  defp system_env(variable) do
+    system_env(variable, nil)
+  end
+
   defp system_env(variable, default) do
+    system_env(variable, default, fn(x) -> x end)
+  end
+
+  defp system_env(variable, default, convert) do
     case System.get_env(variable) do
       nil -> default
-      value -> value
+      value -> convert.(value)
     end
   end
 
@@ -155,4 +217,19 @@ defmodule Kastlex do
   defp maybe_log_parameter(desc, variable) do
     Logger.info "#{desc}: #{variable}"
   end
+
+  defp parse_endpoints(endpoints) do
+    endpoints
+      |> String.split(",")
+      |> Enum.map(&String.split(&1, ":"))
+      |> Enum.map(fn([host, port]) -> {:erlang.binary_to_list(host),
+                                       :erlang.binary_to_integer(port)} end)
+  end
+
+  defp s2b("true"), do: true
+  defp s2b("1"),    do: true
+  defp s2b(_),      do: false
+
+  defp s2i(s), do: :erlang.binary_to_integer(s)
+
 end

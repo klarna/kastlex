@@ -48,8 +48,8 @@ defmodule Kastlex.TokenStorage do
     end
   end
 
-  def start_link(options) do
-    GenServer.start_link(__MODULE__, options, name: @server)
+  def start_link() do
+    GenServer.start_link(__MODULE__, [], name: @server)
   end
 
   def register(sub, token_hash, exp) do
@@ -69,9 +69,9 @@ defmodule Kastlex.TokenStorage do
     end
   end
 
-  defp do_init(options) do
+  defp do_init(_options) do
     :ets.new(@tokens_table, [:set, :protected, :named_table, {:read_concurrency, true}])
-    client = options.brod_client_id
+    client = Kastlex.get_brod_client_id
     :ok = :brod.start_consumer(client, @topic, [])
     :ok = :brod.start_producer(client, @topic, [])
     send self, :subscribe

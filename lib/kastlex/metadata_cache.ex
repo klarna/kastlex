@@ -28,6 +28,15 @@ defmodule Kastlex.MetadataCache do
     {:ok, brokers}
   end
 
+  def existing_partition?(t, p) do
+    {:ok, topics} = get_topics()
+    case Enum.find(topics, nil, fn(x) -> x.topic == t end) do
+      nil -> false
+      topic ->
+        Enum.any?(topic[:partitions], fn(y) -> y.partition == p end)
+    end
+  end
+
   def get_topics() do
     [{:topics, topics}] = :ets.lookup(@table, :topics)
     {:ok, topics}
@@ -48,12 +57,14 @@ defmodule Kastlex.MetadataCache do
     zk_session_timeout = Keyword.fetch!(env, :zk_session_timeout)
     zk_chroot = Keyword.fetch!(env, :zk_chroot)
     {:ok, zk} = :erlzk.connect(zk_cluster, zk_session_timeout, [chroot: zk_chroot])
-    send(Kernel.self(), @refresh)
-    {:ok, %{refresh_timeout_ms: refresh_timeout_ms,
-            zk: zk,
-            zk_cluster: zk_cluster,
-            zk_session_timeout: zk_session_timeout,
-            zk_chroot: zk_chroot}}
+    state = %{refresh_timeout_ms: refresh_timeout_ms,
+              zk: zk,
+              zk_cluster: zk_cluster,
+              zk_session_timeout: zk_session_timeout,
+              zk_chroot: zk_chroot}
+    do_refresh(state)
+    :erlang.send_after(state.refresh_timeout_ms, Kernel.self(), @refresh)
+    {:ok, state}
   end
 
   def handle_call(@sync, _, state) do
@@ -61,17 +72,7 @@ defmodule Kastlex.MetadataCache do
   end
 
   def handle_info(@refresh, state) do
-    try do
-      {:ok, topic_names} = :erlzk.get_children(state.zk, @topics_path)
-      {:ok, topics} = get_topics_meta(state.zk, topic_names, [])
-      {:ok, broker_ids} = :erlzk.get_children(state.zk, @brokers_path)
-      {:ok, brokers} = get_brokers_meta(state.zk, broker_ids, [])
-      :ets.insert(@table, {:ts, :erlang.system_time()})
-      :ets.insert(@table, {:topics, topics})
-      :ets.insert(@table, {:brokers, brokers})
-    rescue
-      e -> Logger.error "Skipping refresh: #{Exception.message(e)}"
-    end
+    do_refresh(state)
     :erlang.send_after(state.refresh_timeout_ms, Kernel.self(), @refresh)
     {:noreply, state}
   end
@@ -83,6 +84,20 @@ defmodule Kastlex.MetadataCache do
 
   def terminate(reason, _state) do
     Logger.info "#{inspect Kernel.self} is terminating: #{inspect reason}"
+  end
+
+  defp do_refresh(state) do
+    try do
+      {:ok, topic_names} = :erlzk.get_children(state.zk, @topics_path)
+      {:ok, topics} = get_topics_meta(state.zk, topic_names, [])
+      {:ok, broker_ids} = :erlzk.get_children(state.zk, @brokers_path)
+      {:ok, brokers} = get_brokers_meta(state.zk, broker_ids, [])
+      :ets.insert(@table, {:ts, :erlang.system_time()})
+      :ets.insert(@table, {:topics, topics})
+      :ets.insert(@table, {:brokers, brokers})
+    rescue
+      e -> Logger.error "Skipping refresh: #{Exception.message(e)}"
+    end
   end
 
   defp get_topics_meta(_zk, [], topics), do: {:ok, topics}

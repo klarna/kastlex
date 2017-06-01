@@ -5,12 +5,13 @@ defmodule Kastlex.Collectors do
     :supervisor3.start_link({:local, __MODULE__}, __MODULE__, [])
   end
 
-  def init(_) do
-    zk_cluster = Kastlex.parse_endpoints(System.get_env("KASTLEX_ZOOKEEPER_CLUSTER"), [{'localhost', 2181}])
+  def init(_options) do
+    zk_cluster = Kastlex.get_zk_cluster
+    client_id = Kastlex.get_brod_client_id
     children =
       [ child_spec(Kastlex.MetadataCache, [%{zk_cluster: zk_cluster}]),
-        child_spec(Kastlex.OffsetsCache, [%{brod_client_id: :kastlex}]),
-        child_spec(Kastlex.CgStatusCollector, [%{brod_client_id: :kastlex}])
+        child_spec(Kastlex.OffsetsCache, [%{brod_client_id: client_id}]),
+        child_spec(Kastlex.CgStatusCollector, [%{brod_client_id: client_id}])
       ]
     {:ok, {{:one_for_one, 0, 1}, children}}
   end

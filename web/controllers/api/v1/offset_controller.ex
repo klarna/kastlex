@@ -8,7 +8,7 @@ defmodule Kastlex.API.V1.OffsetController do
 
   def show_offsets(conn, %{"topic" => topic, "partition" => partition} = params) do
     {partition, _} = Integer.parse(partition)
-    at = parse_at(Map.get(params, "at", "latest"))
+    at = Kastlex.KafkaUtils.parse_logical_offset(Map.get(params, "at", "latest"))
     {maxOffsets, _} = Integer.parse(Map.get(params, "max_offsets", "1"))
     case :brod_client.get_leader_connection(:kastlex, topic, partition) do
       {:ok, pid} ->
@@ -24,19 +24,6 @@ defmodule Kastlex.API.V1.OffsetController do
         {:ok, msg} = Poison.encode(%{error: "unknown topic/partition or no leader for partition"})
         send_resp(conn, 404, msg)
     end
-  end
-
-  defp parse_at("earliest") do
-    -2
-  end
-
-  defp parse_at("latest") do
-    -1
-  end
-
-  defp parse_at(n) do
-    {at, _} = Integer.parse(n)
-    at
   end
 
 end

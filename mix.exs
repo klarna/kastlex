@@ -4,21 +4,21 @@ defmodule Kastlex.Mixfile do
   def project do
     [app: :kastlex,
      description: "Apache Kafka REST Proxy",
-     version: "1.2.5",
+     version: "1.3.0",
      elixir: "~> 1.0",
      elixirc_paths: elixirc_paths(Mix.env),
      compilers: [:phoenix, :gettext] ++ Mix.compilers,
      build_embedded: Mix.env == :prod,
      start_permanent: Mix.env == :prod,
-     deps: deps,
-     aliases: aliases]
+     deps: deps(),
+     aliases: aliases()]
   end
 
   defp aliases do
     [c: "compile",
      rpm: &rpm/1,
      version: &version/1,
-     hashpw: &hashpw/1
+     hashpw: &hashpw/1,
     ]
   end
 
@@ -39,6 +39,8 @@ defmodule Kastlex.Mixfile do
     [{:phoenix, "~> 1.2"},
      {:phoenix_pubsub, "~> 1.0"},
      {:phoenix_live_reload, "~> 1.0", only: :dev},
+     {:mock, "~> 0.2.0", only: :test},
+     {:briefly, "~> 0.3", only: :test},
      {:logger_file_backend, "0.0.9"},
      {:observer_cli, "~> 1.0.8"},
      {:recon, "~> 2.3.2"},
@@ -50,7 +52,7 @@ defmodule Kastlex.Mixfile do
      {:distillery, "~> 0.10"},
      {:guardian, "~> 0.14.2"},
      {:erlzk, "~> 0.6.3"},
-     {:comeonin, "~> 2.5"}
+     {:comeonin, "~> 2.5"},
     ]
   end
 

@@ -11,7 +11,8 @@ defmodule Kastlex.Router do
   end
 
   pipeline :api do
-    plug :accepts, ~w(json)
+    plug :accepts, ["json", "binary"]
+    plug Kastlex.Accept
   end
 
   pipeline :auth do
@@ -46,6 +47,7 @@ defmodule Kastlex.Router do
     get  "/offsets/:topic/:partition", OffsetController, :show_offsets
     post "/messages/:topic", MessageController, :produce
     post "/messages/:topic/:partition", MessageController, :produce
+    get  "/messages/:topic/:partition", MessageController, :fetch
     get  "/messages/:topic/:partition/:offset", MessageController, :fetch
     get  "/urp", UrpController, :list_urps
     get  "/urp/:topic", UrpController, :show_urps

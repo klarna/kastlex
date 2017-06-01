@@ -2,6 +2,8 @@ defmodule Kastlex.Users do
   require Logger
 
   @table  :users
+  @anon "anonymous"
+
   @server __MODULE__
   @reload :reload
 
@@ -13,9 +15,13 @@ defmodule Kastlex.Users do
     GenServer.call(@server, @reload)
   end
 
+  def get_anonymous() do
+    get_user(@anon)
+  end
+
   def get_user(name) do
     case :ets.lookup(@table, name) do
-      [] -> false
+      [] -> []
       [{_, user}] -> user
     end
   end
@@ -46,12 +52,16 @@ defmodule Kastlex.Users do
   end
 
   defp do_reload() do
-    permissions = Application.fetch_env!(:kastlex, :permissions_file_path) |>
-      YamlElixir.read_from_file |>
-      validate_permissions
-    passwd = Application.fetch_env!(:kastlex, :passwd_file_path) |>
-      YamlElixir.read_from_file |>
-      validate_passwd
+    permissions_file_path = Application.fetch_env!(:kastlex, :permissions_file_path)
+    Logger.info "Reloading permissions from #{permissions_file_path}"
+    permissions = permissions_file_path
+    |> YamlElixir.read_from_file
+    |> validate_permissions
+    passwd_file_path = Application.fetch_env!(:kastlex, :passwd_file_path)
+    Logger.info "Reloading credentials from #{passwd_file_path}"
+    passwd = passwd_file_path
+    |> YamlElixir.read_from_file
+    |> validate_passwd
     users = Map.merge(permissions, passwd, fn(_k, v1, v2) -> Map.merge(v1, v2) end) |>
       Enum.map(fn({k,v}) -> {k, map_keys_to_atoms(v) |> Keyword.put(:name, k)} end)
     :ets.delete_all_objects(@table)

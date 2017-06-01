@@ -16,6 +16,15 @@ By default KastleX will try to connect to kafka at localhost:9092 and to zookeep
 
 Default app port is 8092.
 
+## Tests
+
+    mix test
+
+KastleX expects to find kafka:9092 and zookeeper:2181 on localhost.
+It also needs `kastlex` topic with a single partition, and
+`auto.create.topics.enable` parameter in Kafka's server.properties set
+to `false`.
+
 # API
 
 ## Produce messages
@@ -35,6 +44,7 @@ cURL example (-d implies POST):
 
 ## Fetch messages
 
+    GET /api/v1/messages/:topic/:partition
     GET /api/v1/messages/:topic/:partition/:offset
     {
       "size": 29,
@@ -55,6 +65,19 @@ Optional parameters:
   * `max_wait_time`: maximum time in ms to wait for the response, default 1000
   * `min_bytes`: minimum bytes to accumulate in the response, default 1
   * `max_bytes`: maximum bytes to fetch, default 100 kB
+
+`offset` can be an exact offset, -1 or `latest` for latest, -2 or
+`earliest` for earliest.  In 2 last scenarios KastleX will perform
+additional `offset` requests to Kafka to get real offset. When
+`offset` is omitted, KastleX will assume `latest`.
+
+With `Accept: application/json` header the response will include all
+of the messages returned from kafka with their metadata
+
+With `Accept: application/binary` header KastleX will return value
+part of the last message in the message set. It will also set
+additional headers, `x-high-wm-offset` and `x-message-size` which
+correspond to `highWmOffset` and `size` fields in json response.
 
 ## Query available offsets for partition.
 
@@ -262,6 +285,30 @@ So if you just set `KASTLEX_USE_HTTPS=true`, Kastlex will be accepting TLS conne
     KASTLEX_CERTFILE=/etc/kastlex/ssl/server.crt
     KASTLEX_KEYFILE=/etc/kastlex/ssl/server.key
     KASTLEX_CACERTFILE=/etc/kastlex/ssl/ca-cert.crt
+
+## More optional variables
+
+    KASTLEX_KAFKA_USE_SSL=false
+    KASTLEX_KAFKA_CACERTFILE=/path/to/cacertfile
+    KASTLEX_KAFKA_CERTFILE=/path/to/certfile
+    KASTLEX_KAFKA_KEYFILE=/path/to/keyfile
+    KASTLEX_KAFKA_SASL_FILE=/path/to/file/with/sasl/credentials
+    KASTLEX_PRODUCER_REQUIRED_ACKS=
+    KASTLEX_PRODUCER_ACK_TIMEOUT=
+    KASTLEX_PRODUCER_PARTITION_BUFFER_LIMIT=
+    KASTLEX_PRODUCER_PARTITION_ONWIRE_LIMIT=
+    KASTLEX_PRODUCER_MAX_BATCH_SIZE=
+    KASTLEX_PRODUCER_MAX_RETRIES=
+    KASTLEX_PRODUCER_RETRY_BACKOFF_MS=
+    KASTLEX_PRODUCER_MAX_LINGER_MS=
+    KASTLEX_PRODUCER_MAX_LINGER_COUNT=
+
+File with sasl credentials is a plain text file with 2 rows:
+
+    username: user
+    password: s3cr3t
+
+If the variable is set, and file exists, KastleX will use SASL authentication when connecting to Kafka.
 
 ## Building release for production
 

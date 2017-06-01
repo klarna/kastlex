@@ -33,6 +33,12 @@ config :phoenix, :generators,
   migration: true,
   binary_id: false
 
+config :mime, :types, %{
+  "*/*" => ["json"],
+  "application/json" => ["json"],
+  "application/binary" => ["binary"],
+}
+
 config :guardian, Guardian,
   allowed_algos: ["HS512"],
   verify_module: Guardian.JWT,

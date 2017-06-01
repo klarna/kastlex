@@ -16,10 +16,9 @@ defmodule Kastlex.API.V1.TopicController do
     {:ok, topics} = Kastlex.MetadataCache.get_topics()
     case Enum.find(topics, nil, fn(x) -> x.topic == name end) do
       nil ->
-        send_json(conn, 404, %{error: "unknown topic"})
+        send_json(conn, 404, %{error: "Unknown topic"})
       topic ->
         json(conn, topic)
     end
   end
-
 end
