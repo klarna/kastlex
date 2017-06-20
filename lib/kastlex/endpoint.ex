@@ -9,7 +9,7 @@ defmodule Kastlex.Endpoint do
   # when deploying your static files in production.
   plug Plug.Static,
     at: "/", from: :kastlex, gzip: false,
-    only: ~w(favicon.ico robots.txt js)
+    only: ~w(css fonts images js favicon.ico robots.txt)
 
   # Code reloading can be explicitly enabled under the
   # :code_reloader configuration of your endpoint.
@@ -30,6 +30,11 @@ defmodule Kastlex.Endpoint do
 
   plug Plug.MethodOverride
   plug Plug.Head
+
+  plug Plug.Session,
+    store: :cookie,
+    key: "_kastlex_key",
+    signing_salt: "jphGdUNC"
 
   plug Kastlex.Router
 end

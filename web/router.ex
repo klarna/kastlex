@@ -8,6 +8,10 @@ defmodule Kastlex.Router do
 
   pipeline :browser do
     plug :accepts, ["html"]
+    plug :fetch_session
+    plug :fetch_flash
+    plug :protect_from_forgery
+    plug :put_secure_browser_headers
   end
 
   pipeline :api do
@@ -29,7 +33,7 @@ defmodule Kastlex.Router do
   scope "/", Kastlex do
     pipe_through :api
     post "/login", LoginController, :login
-    get "/favicon.ico", CatchAllController, :favicon
+    #get "/favicon.ico", CatchAllController, :favicon
   end
 
   scope "/admin", as: :admin, alias: Kastlex.Admin do

@@ -8,7 +8,7 @@ defmodule Kastlex.API.V1.BrokerController do
 
   def list_brokers(conn, _params) do
     {:ok, brokers} = Kastlex.MetadataCache.get_brokers()
-    json(conn, brokers)
+    json(conn, %{brokers: brokers})
   end
 
   def show_broker(conn, %{"broker" => id}) do

@@ -16,3 +16,7 @@ erl_crash.dump
 # variables.
 /config/prod.secret.exs
 *.dets
+
+/node_modules/
+/priv/static/js/
+/web/elm/elm-stuff/

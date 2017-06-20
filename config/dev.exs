@@ -13,14 +13,17 @@ config :kastlex, Kastlex.Endpoint,
   reloadable_paths: ["web"],
   reloadable_compilers: [:gettext, :phoenix, :elixir],
   check_origin: false,
-  watchers: []
+  watchers: [node: ["node_modules/brunch/bin/brunch", "watch", "--stdin",
+                    cd: Path.expand("../", __DIR__)]]
 
 # Watch static and templates for browser reloading.
 config :kastlex, Kastlex.Endpoint,
   live_reload: [
     patterns: [
+      ~r{priv/static/.*(js|css|png|jpeg|jpg|gif|svg)$},
       ~r{priv/gettext/.*(po)$},
-      ~r{web/views/.*(ex)$}
+      ~r{web/views/.*(ex)$},
+      ~r{web/templates/.*(eex)$}
     ]
   ]
 
