@@ -37,6 +37,7 @@ config :mime, :types, %{
   "*/*" => ["json"],
   "application/json" => ["json"],
   "application/binary" => ["binary"],
+  "text/html" => ["html"]
 }
 
 config :guardian, Guardian,

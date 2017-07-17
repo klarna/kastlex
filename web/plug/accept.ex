@@ -9,7 +9,8 @@ defmodule Kastlex.Accept do
   def call(conn, _opts) do
     case get_req_header(conn, "accept") do
       [accept] ->
-        type = Map.fetch(@types, accept)
+        accept = String.split(accept, ",")
+        type = fetch_first_available(@types, accept)
         _call(conn, type)
       [] ->
         _call(conn, {:ok, ["json"]})
@@ -23,5 +24,15 @@ defmodule Kastlex.Accept do
     conn
     |> send_resp(404, "Not found")
     |> halt()
+  end
+
+  defp fetch_first_available(_types, []), do: :error
+  defp fetch_first_available(types, [t | accept]) do
+    case Map.fetch(types, t) do
+      {:ok, type} ->
+        {:ok, type}
+      _ ->
+        fetch_first_available(types, accept)
+    end
   end
 end
