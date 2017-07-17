@@ -34,7 +34,7 @@ defmodule Kastlex do
     Application.put_env(:kastlex, :cg_exclude_regex, cg_exclude_regex)
 
     # token storage
-    maybe_configure_token_storage(system_env("KASTLEX_ENABLE_TOKEN_STORAGE"))
+    maybe_configure_token_storage(system_env("KASTLEX_ENABLE_TOKEN_STORAGE", false, &s2b/1))
     maybe_set_token_ttl(system_env("KASTLEX_TOKEN_TTL_SECONDS"))
 
     # kafka connection
@@ -148,9 +148,8 @@ defmodule Kastlex do
       |> maybe_put(:certfile, system_env("KASTLEX_KAFKA_CERTFILE"))
       |> maybe_put(:keyfile, system_env("KASTLEX_KAFKA_KEYFILE"))
 
-    Logger.info "brod ssl config: #{inspect ssl_config}"
     ssl = case ssl_config do
-            [] -> system_env("KASTLEX_KAFKA_USE_SSL", false)
+            [] -> system_env("KASTLEX_KAFKA_USE_SSL", false, &s2b/1)
             kw -> kw
           end
 
@@ -169,6 +168,13 @@ defmodule Kastlex do
       |> maybe_put(:max_linger_count, system_env("KASTLEX_PRODUCER_MAX_LINGER_COUNT", nil, &s2i/1))
 
     Logger.info "brod producer config: #{inspect producer_config}"
+    Logger.info "brod ssl config: #{inspect ssl}"
+    case sasl do
+      {:plain, username, _password} ->
+        Logger.info "brod sasl username: #{username}"
+      _ ->
+        Logger.info "not using sasl auth"
+    end
 
     [allow_topic_auto_creation: false,
      auto_start_producers: true,
@@ -184,7 +190,7 @@ defmodule Kastlex do
   defp get_brod_sasl_config(file) do
     try do
       config = YamlElixir.read_from_file(file)
-      {:plain, config["username"], config["password"]}
+      {:plain, String.to_charlist(config["username"]), String.to_charlist(config["password"])}
     rescue
       e in RuntimeError ->
         Logger.error("Error loading sasl config file: " <> e.message)
@@ -209,6 +215,7 @@ defmodule Kastlex do
   defp system_env(variable, default, convert) do
     case System.get_env(variable) do
       nil -> default
+      ""  -> default
       value -> convert.(value)
     end
   end
