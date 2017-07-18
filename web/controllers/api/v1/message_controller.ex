@@ -130,7 +130,7 @@ defmodule Kastlex.API.V1.MessageController do
           messages when type == "binary" ->
             resp = %{highWmOffset: highWmOffset,
                      size: size,
-                     content: kafka_message(hd(messages), :value)
+                     content: undefined_to_null(kafka_message(hd(messages), :value))
                     }
             {:ok, resp}
         end

@@ -9,10 +9,11 @@ defmodule Kastlex.Accept do
   def call(conn, _opts) do
     case get_req_header(conn, "accept") do
       [accept] ->
+        Logger.debug "accept header: #{inspect accept}"
         accept_options =
           String.split(accept, ",") |>
           Enum.map(fn(x) -> String.replace(x, ~r/;.*/, "") end)
-        type = find_accept_header(accept_options, @types)
+        type = fetch_first_available(@types, accept_options)
         _call(conn, type)
       [] ->
         _call(conn, {:ok, ["json"]})
@@ -28,11 +29,15 @@ defmodule Kastlex.Accept do
     |> halt()
   end
 
-  defp find_accept_header([], _map), do: "*/*"
-  defp find_accept_header([h | tail], map) do
-    case Map.has_key?(map, h) do
-      true -> Map.fetch(map, h)
-      false -> find_accept_header(tail, map)
+  defp fetch_first_available(types, []) do
+    Map.fetch(types, "*/*")
+  end
+  defp fetch_first_available(types, [t | accept_options]) do
+    case Map.fetch(types, t) do
+      {:ok, type} ->
+        {:ok, type}
+      _ ->
+        fetch_first_available(types, accept_options)
     end
   end
 end
