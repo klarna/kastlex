@@ -130,7 +130,7 @@ defmodule Kastlex.API.V1.MessageController do
           messages when type == "binary" ->
             resp = %{highWmOffset: highWmOffset,
                      size: size,
-                     content: undefined_to_null(kafka_message(hd(messages), :value))
+                     content: undefined_to_empty(kafka_message(hd(messages), :value))
                     }
             {:ok, resp}
         end
@@ -161,6 +161,9 @@ defmodule Kastlex.API.V1.MessageController do
     value = undefined_to_null(value)
     messages_to_map(tail, [%{offset: offset, crc: crc, key: key, value: value} | acc])
   end
+
+  defp undefined_to_empty(:undefined), do: ""
+  defp undefined_to_empty(x),          do: x
 
   defp undefined_to_null(:undefined), do: nil
   defp undefined_to_null(x),          do: x
