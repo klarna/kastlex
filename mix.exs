@@ -19,6 +19,7 @@ defmodule Kastlex.Mixfile do
      rpm: &rpm/1,
      version: &version/1,
      hashpw: &hashpw/1,
+     verify: &verify/1, # verify jwt
     ]
   end
 
@@ -85,6 +86,17 @@ defmodule Kastlex.Mixfile do
   defp hashpw(args) do
     Mix.Tasks.Loadpaths.run(args)
     Mix.shell.info("#{Comeonin.Bcrypt.hashpwsalt(to_string(args))}")
+  end
+
+  defp verify(args) do
+    Mix.Tasks.Loadpaths.run(args)
+    # first arg is path to KASTLEX_JWK_FILE
+    # second arg is JWT to verify
+    jwk = JOSE.JWK.from_pem_file(Enum.at(args,0))
+    token = Enum.at(args, 1)
+    {valid, jwt, _jws} = JOSE.JWT.verify_strict(jwk, ["ES512"], token)
+    Mix.shell.info("Token is valid: #{inspect valid}")
+    Mix.shell.info("#{Poison.encode_to_iodata!(jwt, pretty: true)}")
   end
 
 end
