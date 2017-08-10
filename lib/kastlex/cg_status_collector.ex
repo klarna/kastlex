@@ -139,20 +139,27 @@ defmodule Kastlex.CgStatusCollector do
     end
   end
 
-  defp handle_message(msg, exclude) do
-    msg = kafka_message(msg)
+  defp handle_message(orig_msg, exclude) do
+    msg = kafka_message(orig_msg)
     key_bin = msg[:key]
     value_bin = msg[:value]
-    {tag, key, value} = :kpro_consumer_group.decode(key_bin, value_bin)
-    case exclude.(key[:group_id]) do
-      true ->
-        :ok
-      false ->
-        case tag do
-          :offset -> Kastlex.CgCache.committed_offset(key, value)
-          :group -> Kastlex.CgCache.new_cg_status(key, value)
-        end
-        :ok
+    try do
+      {tag, key, value} = :kpro_consumer_group.decode(key_bin, value_bin)
+      case exclude.(key[:group_id]) do
+        true ->
+          :ok
+        false ->
+          case tag do
+            :offset -> Kastlex.CgCache.committed_offset(key, value)
+            :group -> Kastlex.CgCache.new_cg_status(key, value)
+          end
+          :ok
+      end
+    rescue e ->
+      Logger.error "Failed to process #{inspect orig_msg} from __consumer_offsets: #{inspect e}"
+      Logger.debug "key: #{inspect(key_bin, [limit: 10000])}"
+      Logger.debug "value: #{inspect(value_bin, [limit: 10000])}"
+      :ok
     end
   end
 end
