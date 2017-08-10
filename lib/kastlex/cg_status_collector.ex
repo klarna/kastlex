@@ -16,7 +16,7 @@ defmodule Kastlex.CgStatusCollector do
   end
 
   def init(options) do
-    send self, {:post_init, options}
+    send self(), {:post_init, options}
     {:ok, %{}}
   end
 
@@ -47,7 +47,7 @@ defmodule Kastlex.CgStatusCollector do
           f
       end
     {:ok, partitions_count} = :brod.get_partitions_count(client, @topic)
-    :brod.start_consumer(client, @topic, [])
+    :brod.start_consumer(client, @topic, [begin_offset: :earliest, offset_reset_policy: :reset_to_earliest])
     workers = for partition <- 0..(partitions_count-1) do
                 spawn_link fn -> subscriber(client, partition, exclude) end
               end
@@ -140,8 +140,9 @@ defmodule Kastlex.CgStatusCollector do
   end
 
   defp handle_message(msg, exclude) do
-    key_bin = kafka_message(msg, :key)
-    value_bin = kafka_message(msg, :value)
+    msg = kafka_message(msg)
+    key_bin = msg[:key]
+    value_bin = msg[:value]
     {tag, key, value} = :kpro_consumer_group.decode(key_bin, value_bin)
     case exclude.(key[:group_id]) do
       true ->

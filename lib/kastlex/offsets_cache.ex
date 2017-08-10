@@ -53,16 +53,16 @@ defmodule Kastlex.OffsetsCache do
   defp refresh_offsets(brod, topic, partition) do
     case :brod_client.get_leader_connection(brod, topic, partition) do
       {:ok, pid} ->
-        {:ok, offsets} = :brod_utils.fetch_offsets(pid, topic, partition, :latest, 1)
-        save_offsets(topic, partition, offsets)
+        res = :brod_utils.resolve_offset(pid, topic, partition, :latest)
+        save_offset(topic, partition, res)
       {:error, _} ->
         # don't care about errors
         :ok
     end
   end
 
-  defp save_offsets(_topic, _partition, []), do: :ok
-  defp save_offsets(topic, partition, [offset]) do
+  defp save_offset(_topic, _partition, {:error, _}), do: :ok
+  defp save_offset(topic, partition, {:ok, offset}) do
     :ets.insert(@table, {{topic, partition}, offset})
   end
 

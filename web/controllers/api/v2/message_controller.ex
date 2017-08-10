@@ -1,4 +1,4 @@
-defmodule Kastlex.API.V1.MessageController do
+defmodule Kastlex.API.V2.MessageController do
 
   require Logger
   require Record
@@ -112,38 +112,36 @@ defmodule Kastlex.API.V1.MessageController do
     messages = :brod_utils.decode_messages(offset, partition_response[:record_set])
     case type do
       "json" ->
-        messages = messages |> Enum.map(&transform_kafka_message/1)
-        resp = %{size: nil,
-                 highWmOffset: partition_response[:partition_header][:high_watermark],
-                 error_code: partition_response[:partition_header][:error_code],
+        messages = messages |>
+          Enum.map(&to_kafka_message/1) |>
+          Enum.map(fn(x) -> Enum.map(x, &undef_to_nil/1) end) |>
+          Enum.map(&Map.new/1)
+        resp = %{high_watermark: partition_response[:partition_header][:high_watermark],
                  messages: messages
                 }
         {:ok, resp}
       "binary" ->
         payload = messages |> hd |> kafka_message(:value) |> undef_to_empty
-        resp = %{payload: payload,
-                 high_watermark: partition_response[:partition_header][:high_watermark]
+        resp = %{high_watermark: partition_response[:partition_header][:high_watermark],
+                 payload: payload
                 }
         {:ok, resp}
     end
   end
 
-  defp transform_kafka_message(raw_msg) do
-    msg = kafka_message(raw_msg)
-    %{key: undef_to_nil(msg[:key]),
-      value: undef_to_nil(msg[:value]),
-      offset: msg[:offset],
-      crc: msg[:crc]
-     }
-  end
+  defp to_kafka_message(x), do: kafka_message(x)
 
-  defp undef_to_nil(:undefined), do: nil
-  defp undef_to_nil(x),          do: x
+  defp undef_to_nil({k, :undefined}), do: {k, nil}
+  defp undef_to_nil({k, v}),          do: {k, v}
 
   defp undef_to_empty(:undefined), do: ""
-  defp undef_to_empty(x),          do: x
+  defp undef_to_empty(v),          do: v
 
-  defp respond(conn, {:ok, resp}, "json"), do: json(conn, resp)
+  defp respond(conn, {:ok, resp}, "json") do
+    conn
+    |> put_resp_header("x-high-wm-offset", Integer.to_string(resp.high_watermark))
+    |> send_json(200, resp.messages)
+  end
   defp respond(conn, {:ok, resp}, "binary") do
     conn
     |> put_resp_content_type("application/binary")

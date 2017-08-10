@@ -55,6 +55,14 @@ defmodule Kastlex.Router do
     get  "/consumers/:group_id", ConsumerController, :show_group
   end
 
+  scope "/api/v2", as: :api_v2, alias: Kastlex.API.V2 do
+    pipe_through [:api, :auth]
+    post "/messages/:topic", MessageController, :produce
+    post "/messages/:topic/:partition", MessageController, :produce
+    get  "/messages/:topic/:partition", MessageController, :fetch
+    get  "/messages/:topic/:partition/:offset", MessageController, :fetch
+  end
+
   def handle_errors(conn, data) do
     Logger.error "#{inspect data}"
     send_json(conn, conn.status, %{error: "Something went wrong"})

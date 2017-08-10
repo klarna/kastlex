@@ -72,9 +72,9 @@ defmodule Kastlex.TokenStorage do
   defp do_init(_options) do
     :ets.new(@tokens_table, [:set, :protected, :named_table, {:read_concurrency, true}])
     client = Kastlex.get_brod_client_id
-    :ok = :brod.start_consumer(client, @topic, [])
+    :ok = :brod.start_consumer(client, @topic, [begin_offset: :earliest, offset_reset_policy: :reset_to_earliest])
     :ok = :brod.start_producer(client, @topic, [])
-    send self, :subscribe
+    send self(), :subscribe
     {:ok, %{:client => client}}
   end
 
@@ -159,7 +159,7 @@ defmodule Kastlex.TokenStorage do
   end
 
   defp resubscribe() do
-    Process.send_after self, :subscribe, @resubscribe_delay
+    Process.send_after self(), :subscribe, @resubscribe_delay
   end
 
   defp token_hash(jwt) do

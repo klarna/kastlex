@@ -28,7 +28,7 @@ defmodule Kastlex.MessageControllerTest do
     {:ok, %{:topic => topic, :partition => partition}}
   end
 
-  test "show chosen resource", params do
+  test "show chosen resource v1", params do
     {:ok, token, _} = Guardian.encode_and_sign(%{user: "test"})
     response = build_conn()
     |> put_req_header("accept", "application/json")
@@ -36,7 +36,30 @@ defmodule Kastlex.MessageControllerTest do
     |> get(api_v1_message_path(build_conn(), :fetch, params[:topic], params[:partition]))
     |> json_response(200)
 
+    IO.puts "#{inspect response}"
     assert Kernel.is_map(response)
+    assert Map.has_key?(response, "size")
+    assert Map.has_key?(response, "highWmOffset")
+    assert Map.has_key?(response, "error_code")
+    assert Map.has_key?(response, "messages")
+    [msg] = response["messages"]
+    assert Map.has_key?(msg, "key")
+    assert Map.has_key?(msg, "value")
+    assert Map.has_key?(msg, "offset")
+    assert Map.has_key?(msg, "crc")
+  end
+
+  test "show chosen resource v2", params do
+    {:ok, token, _} = Guardian.encode_and_sign(%{user: "test"})
+    response = build_conn()
+    |> put_req_header("accept", "application/json")
+    |> put_req_header("authorization", "Bearer #{token}")
+    |> get(api_v2_message_path(build_conn(), :fetch, params[:topic], params[:partition]))
+    |> json_response(200)
+
+    assert Kernel.is_list(response)
+    assert Enum.all?(response, &Kernel.is_map/1)
+    assert Enum.all?(response, fn(x) -> Map.has_key?(x, "key") and Map.has_key?(x, "value") end)
   end
 
   test "show chosen resource when accepting binary", params do
