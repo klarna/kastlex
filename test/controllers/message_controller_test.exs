@@ -85,7 +85,7 @@ defmodule Kastlex.MessageControllerTest do
     response = build_conn()
     |> put_req_header("accept", "application/json")
     |> put_req_header("authorization", "Bearer #{token}")
-    |> get(api_v2_message_path(build_conn(), :fetch, params[:topic], params[:partition]), %{offset: -2})
+    |> get(api_v2_message_path(build_conn(), :fetch, params[:topic], params[:partition]), %{offset: "-2"})
     |> json_response(200)
     [msg1, msg2, msg3] = response
     assert "1" == msg1["value"]

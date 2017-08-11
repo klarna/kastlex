@@ -168,13 +168,20 @@ defmodule Kastlex.API.V2.MessageController do
   defp resolve_offset(pid, t, p, "earliest") do
     :brod_utils.resolve_offset(pid, t, p, :earliest)
   end
-  defp resolve_offset(pid, t, p, offset) when is_integer(offset) and offset < 0 do
+  defp resolve_offset(pid, t, p, offset) do
+    case Integer.parse(offset) do
+      {num, _} -> resolve_numeric_offset(pid, t, p, num)
+      :error -> {:error, "invalid offset"}
+    end
+  end
+
+  defp resolve_numeric_offset(pid, t, p, offset) when offset < 0 do
     case :brod_utils.resolve_offset(pid, t, p, :latest) do
-      {:ok, latest} -> {:ok, latest + offset - 1}
+      {:ok, latest} -> {:ok, latest + offset}
       {:error, _} = error -> error
     end
   end
-  defp resolve_offset(pid, t, p, offset) when is_integer(offset) do
+  defp resolve_numeric_offset(pid, t, p, offset) do
     :brod_utils.resolve_offset(pid, t, p, offset)
   end
 
