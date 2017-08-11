@@ -80,14 +80,8 @@ defmodule Kastlex.API.V2.MessageController do
                 {max_wait_time, _} = Integer.parse(Map.get(params, "max_wait_time", "1000"))
                 {min_bytes, _} = Integer.parse(Map.get(params, "min_bytes", "1"))
                 {max_bytes, _} = Integer.parse(Map.get(params, "max_bytes", "104857600")) # 100 kB
-                request = :kpro.fetch_request(_vsn = 0,
-                                              topic,
-                                              partition,
-                                              offset,
-                                              max_wait_time,
-                                              min_bytes,
-                                              max_bytes)
-                response = :brod_sock.request_sync(pid, request, :infinity) |> handle_fetch_response(type, offset)
+                fetch = :brod_utils.make_fetch_fun(pid, topic, partition, max_wait_time, min_bytes, max_bytes)
+                response = fetch.(offset) |> handle_fetch_response(type)
                 respond(conn, response, type)
               error ->
                 Logger.error "Cannot resolve logical offset #{orig_offset}: #{inspect error}"
@@ -105,27 +99,18 @@ defmodule Kastlex.API.V2.MessageController do
     end
   end
 
-  defp handle_fetch_response({:error, _} = error, _type, _offset), do: error
-  defp handle_fetch_response({:ok, response}, type, offset) do
-    [topic_response] = kpro_rsp(response)[:msg][:responses]
-    [partition_response] = topic_response[:partition_responses]
-    messages = :brod_utils.decode_messages(offset, partition_response[:record_set])
+  defp handle_fetch_response({:error, _} = error, _type), do: error
+  defp handle_fetch_response({:ok, messages}, type) do
     case type do
       "json" ->
         messages = messages |>
           Enum.map(&to_kafka_message/1) |>
           Enum.map(fn(x) -> Enum.map(x, &undef_to_nil/1) end) |>
           Enum.map(&Map.new/1)
-        resp = %{high_watermark: partition_response[:partition_header][:high_watermark],
-                 messages: messages
-                }
-        {:ok, resp}
+        {:ok, messages}
       "binary" ->
         payload = messages |> hd |> kafka_message(:value) |> undef_to_empty
-        resp = %{high_watermark: partition_response[:partition_header][:high_watermark],
-                 payload: payload
-                }
-        {:ok, resp}
+        {:ok, payload}
     end
   end
 
@@ -137,16 +122,13 @@ defmodule Kastlex.API.V2.MessageController do
   defp undef_to_empty(:undefined), do: ""
   defp undef_to_empty(v),          do: v
 
-  defp respond(conn, {:ok, resp}, "json") do
-    conn
-    |> put_resp_header("x-high-wm-offset", Integer.to_string(resp.high_watermark))
-    |> send_json(200, resp.messages)
+  defp respond(conn, {:ok, messages}, "json") do
+    send_json(conn, 200, messages)
   end
-  defp respond(conn, {:ok, resp}, "binary") do
+  defp respond(conn, {:ok, payload}, "binary") do
     conn
     |> put_resp_content_type("application/binary")
-    |> put_resp_header("x-high-wm-offset", Integer.to_string(resp.high_watermark))
-    |> send_resp(200, resp.payload)
+    |> send_resp(200, payload)
   end
   defp respond(conn, {:error, reason}, "json") do
     send_json(conn, 503, %{error: reason})

@@ -91,10 +91,7 @@ With `Accept: application/json` header the response will include all
 of the messages returned from kafka with their metadata
 
 With `Accept: application/binary` header KastleX will return `value`
-only of the last message in the message set. It will also set
-additional header `x-high-wm-offset` which correspond to `highWmOffset`
-field in v1 json response. In v2 KastleX will also set the header
-instead of a field in response.
+only of the last message in the message set.
 
 ## Query available offsets for partition.
 
