@@ -85,7 +85,7 @@ Optional parameters:
   * `max_bytes`: maximum bytes to fetch, default 100 kB
 
 `offset` can be an exact offset, `latest`, `earliest` or negative. Default latest.
-When negative, KastleX will assume it's relative offset to the `latest`.
+When negative, KastleX will assume it's a relative offset to the `latest`.
 
 With `Accept: application/json` header the response will include all
 of the messages returned from kafka with their metadata

@@ -36,7 +36,6 @@ defmodule Kastlex.MessageControllerTest do
     |> get(api_v1_message_path(build_conn(), :fetch, params[:topic], params[:partition]))
     |> json_response(200)
 
-    IO.puts "#{inspect response}"
     assert Kernel.is_map(response)
     assert Map.has_key?(response, "size")
     assert Map.has_key?(response, "highWmOffset")
@@ -60,6 +59,38 @@ defmodule Kastlex.MessageControllerTest do
     assert Kernel.is_list(response)
     assert Enum.all?(response, &Kernel.is_map/1)
     assert Enum.all?(response, fn(x) -> Map.has_key?(x, "key") and Map.has_key?(x, "value") end)
+  end
+
+  test "show chosen resource v2 with negative offset", params do
+    {:ok, token, _} = Guardian.encode_and_sign(%{user: "test"})
+
+    build_conn()
+    |> put_req_header("content-type", "application/binary")
+    |> put_req_header("authorization", "Bearer #{token}")
+    |> post(api_v1_message_path(build_conn(), :produce, params[:topic]), "1")
+    |> response(204)
+
+    build_conn()
+    |> put_req_header("content-type", "application/binary")
+    |> put_req_header("authorization", "Bearer #{token}")
+    |> post(api_v1_message_path(build_conn(), :produce, params[:topic]), "2")
+    |> response(204)
+
+    build_conn()
+    |> put_req_header("content-type", "application/binary")
+    |> put_req_header("authorization", "Bearer #{token}")
+    |> post(api_v1_message_path(build_conn(), :produce, params[:topic]), "3")
+    |> response(204)
+
+    response = build_conn()
+    |> put_req_header("accept", "application/json")
+    |> put_req_header("authorization", "Bearer #{token}")
+    |> get(api_v2_message_path(build_conn(), :fetch, params[:topic], params[:partition]), %{offset: -2})
+    |> json_response(200)
+    [msg1, msg2, msg3] = response
+    assert "1" == msg1["value"]
+    assert "2" == msg2["value"]
+    assert "3" == msg3["value"]
   end
 
   test "show chosen resource when accepting binary", params do

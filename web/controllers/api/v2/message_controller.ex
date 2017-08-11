@@ -155,26 +155,27 @@ defmodule Kastlex.API.V2.MessageController do
     send_resp(conn, 503, "error: #{inspect reason}")
   end
 
-  defp resolve_offset(pid, t, p, orig_offset) do
-    offset = Kastlex.KafkaUtils.parse_logical_offset(orig_offset)
-    case offset < 0 do
-      true ->
-        do_resolve_offset(pid, t, p, offset)
-      false ->
-        {:ok, offset}
+  # "latest" offset in offset request means "high watermark",
+  # there is no message at this offset in kafka.
+  # We are compensating for this by subtracting 1 from the result of
+  # resolving "latest" offset
+  defp resolve_offset(pid, t, p, "latest") do
+    case :brod_utils.resolve_offset(pid, t, p, :latest) do
+      {:ok, latest} -> {:ok, latest - 1}
+      {:error, _} = error -> error
     end
   end
-
-  defp do_resolve_offset(pid, t, p, logical_offset) do
-    case :brod_utils.resolve_offset(pid, t, p, logical_offset) do
-      {:ok, offset} ->
-        case logical_offset == -1 do # latest
-          true -> {:ok, offset-1}
-          false -> {:ok, offset}
-        end
-      {:error, _} = error ->
-        error
+  defp resolve_offset(pid, t, p, "earliest") do
+    :brod_utils.resolve_offset(pid, t, p, :earliest)
+  end
+  defp resolve_offset(pid, t, p, offset) when is_integer(offset) and offset < 0 do
+    case :brod_utils.resolve_offset(pid, t, p, :latest) do
+      {:ok, latest} -> {:ok, latest + offset - 1}
+      {:error, _} = error -> error
     end
+  end
+  defp resolve_offset(pid, t, p, offset) when is_integer(offset) do
+    :brod_utils.resolve_offset(pid, t, p, offset)
   end
 
 end
