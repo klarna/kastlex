@@ -130,13 +130,13 @@ defmodule Kastlex.CgCache do
       end
     case offset_hwm do
       -1 ->
-        "no-hw-offset"
+        -1
       -2 ->
-        "no-offset-cache"
+        -2
       n when n > offset ->
         n - offset - 1
       _ ->
-        "0"
+        0
     end
   end
 end
