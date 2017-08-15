@@ -109,10 +109,10 @@ defmodule Kastlex.MetadataCache do
                           fn(tm) ->
                             partitions = Enum.map(tm[:partition_metadata],
                                                   fn(x) ->
-                                                    %{isr: x[:isr],
+                                                    %{isr: Enum.sort(x[:isr]),
                                                       leader: x[:leader],
                                                       partition: x[:partition_id],
-                                                      replicas: x[:replicas]}
+                                                      replicas: Enum.sort(x[:replicas])}
                                                   end)
                             config = get_topic_config(state.zk, tm[:topic])
                             %{topic: tm[:topic],
