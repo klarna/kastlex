@@ -10,8 +10,6 @@ defmodule Kastlex.MetadataCache do
   @refresh :refresh
   @sync :sync
 
-  @brokers_path "/brokers/ids"
-  @topics_path "/brokers/topics"
   @topics_config_path "/config/topics"
 
   def sync() do
@@ -100,62 +98,38 @@ defmodule Kastlex.MetadataCache do
   end
 
   defp do_refresh(state) do
-    try do
-      {:ok, topic_names} = :erlzk.get_children(state.zk, @topics_path)
-      {:ok, topics} = get_topics_meta(state.zk, topic_names, [])
-      {:ok, broker_ids} = :erlzk.get_children(state.zk, @brokers_path)
-      {:ok, brokers} = get_brokers_meta(state.zk, broker_ids, [])
-      :ets.insert(@table, {:ts, :erlang.system_time()})
-      :ets.insert(@table, {:topics, topics})
-      :ets.insert(@table, {:brokers, brokers})
-    rescue
-      e -> Logger.error "Skipping refresh: #{Exception.message(e)}"
+    case :brod_client.get_metadata(Kastlex.get_brod_client_id(), :undefined) do
+      {:ok, meta} ->
+        :ets.insert(@table, {:ts, :erlang.system_time()})
+        brokers = meta[:brokers] |> Enum.map(fn(x) ->
+                                               %{host: x[:host], port: x[:port], id: x[:node_id]}
+                                             end)
+        :ets.insert(@table, {:brokers, brokers})
+        topics = Enum.map(meta[:topic_metadata],
+                          fn(tm) ->
+                            partitions = Enum.map(tm[:partition_metadata],
+                                                  fn(x) ->
+                                                    %{isr: x[:isr],
+                                                      leader: x[:leader],
+                                                      partition: x[:partition_id],
+                                                      replicas: x[:replicas]}
+                                                  end)
+                            config = get_topic_config(state.zk, tm[:topic])
+                            %{topic: tm[:topic],
+                              config: config,
+                              partitions: partitions}
+                          end)
+        :ets.insert(@table, {:topics, topics})
+      {:error, reason} ->
+        Logger.error "Error fetching metadata: #{inspect reason}"
     end
   end
 
-  defp get_topics_meta(_zk, [], topics), do: {:ok, topics}
-  defp get_topics_meta(zk, [t_name | tail], acc) do
-    {:ok, topic} = get_topic_meta(zk, t_name)
-    get_topics_meta(zk, tail, [topic | acc])
-  end
-
-  defp get_topic_meta(zk, t_name) do
-    topic = :erlang.list_to_binary(t_name)
-    data_path = Enum.join([@topics_path, topic], "/")
+  defp get_topic_config(zk, topic) do
     config_path = Enum.join([@topics_config_path, topic], "/")
-    {:ok, {data_json, _}} = :erlzk.get_data(zk, data_path)
     {:ok, {config_json, _}} = :erlzk.get_data(zk, config_path)
-    %{"partitions" => assignments} = Poison.decode!(data_json)
-    {:ok, partitions} = get_partitions_meta(zk, topic, Map.to_list(assignments), [])
     %{"config" => config} = Poison.decode!(config_json)
-    {:ok, %{topic: topic, config: config,
-            partitions: Enum.sort(partitions, &(&1.partition < &2.partition))}}
-  end
-
-  defp get_partitions_meta(_zk, _topic, [], acc), do: {:ok, acc}
-  defp get_partitions_meta(zk, topic, [a | tail], acc) do
-    {:ok, partition} = get_partition_meta(zk, topic, a)
-    get_partitions_meta(zk, topic, tail, [partition | acc])
-  end
-
-  defp get_partition_meta(zk, topic, {partition, replicas}) do
-    path = Enum.join([@topics_path, topic, "partitions", partition, "state"], "/")
-    {:ok, {json, _stat}} = :erlzk.get_data(zk, path)
-    %{"isr" => isr, "leader" => leader} = Poison.decode!(json)
-    {:ok, %{partition: :erlang.binary_to_integer(partition),
-            leader: leader,
-            replicas: Enum.sort(replicas),
-            isr: Enum.sort(isr)}}
-  end
-
-  defp get_brokers_meta(_zk, [], brokers), do: {:ok, brokers}
-  defp get_brokers_meta(zk, [id | tail], acc) do
-    path = Enum.join([@brokers_path, id], "/")
-    {:ok, {json, _stat}} = :erlzk.get_data(zk, path)
-    %{"endpoints" => endpoints, "host" => host, "port" => port} = Poison.decode!(json)
-    id = :erlang.list_to_integer(id)
-    broker = %{id: id, endpoints: endpoints, host: host, port: port}
-    get_brokers_meta(zk, tail, [broker | acc])
+    config
   end
 
 end
