@@ -53,6 +53,7 @@ defmodule Kastlex.Router do
     get  "/urp/:topic", UrpController, :show_urps
     get  "/consumers", ConsumerController, :list_groups
     get  "/consumers/:group_id", ConsumerController, :show_group
+    get  "/consumers/:group_id/maxlag", ConsumerController, :maxlag
   end
 
   scope "/api/v2", as: :api_v2, alias: Kastlex.API.V2 do

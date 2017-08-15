@@ -18,6 +18,15 @@ defmodule Kastlex.API.V1.ConsumerController do
     end
   end
 
+  def maxlag(conn, %{"group_id" => group_id}) do
+    case Kastlex.CgCache.get_group(group_id) do
+      false -> send_json(conn, 404, %{error: "unknown group"})
+      group ->
+        maxlag = Enum.max_by(group.offsets, fn(x) -> x.lagging end)
+        send_json(conn, 200, maxlag.lagging)
+    end
+  end
+
   ## Fix user_data fields to base64 if not valid utf8 text
   defp fix_user_data(group) do
     fix_fun = fn(meta) ->

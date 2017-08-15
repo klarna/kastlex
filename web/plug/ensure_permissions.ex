@@ -50,6 +50,9 @@ defmodule Kastlex.Plug.EnsurePermissions do
   defp has_permissions?(:show_group = action, "GET", user, %{"group_id" => group_id}) do
     has_2nd_level_permissions?(action, user, group_id)
   end
+  defp has_permissions?(:maxlag = action, "GET", user, %{"group_id" => group_id}) do
+    has_2nd_level_permissions?(action, user, group_id)
+  end
   defp has_permissions?(:reload = action, "GET", user, _), do: Keyword.get(user, action, false)
   defp has_permissions?(:revoke = action, "DELETE", user, _), do: Keyword.get(user, action, false)
   defp has_permissions?(_, _, _, _), do: false
