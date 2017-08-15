@@ -20,17 +20,16 @@ defmodule Kastlex.MetadataCache do
 
   def get_ts() do
     [{:ts, ts}] = :ets.lookup(@table, :ts)
-    {:ok, ts}
+    ts
   end
 
   def get_brokers() do
     [{:brokers, brokers}] = :ets.lookup(@table, :brokers)
-    {:ok, brokers}
+    brokers
   end
 
   def existing_partition?(t, p) do
-    {:ok, topics} = get_topics()
-    case Enum.find(topics, nil, fn(x) -> x.topic == t end) do
+    case Enum.find(get_topics(), nil, fn(x) -> x.topic == t end) do
       nil -> false
       topic ->
         Enum.any?(topic[:partitions], fn(y) -> y.partition == p end)
@@ -39,7 +38,21 @@ defmodule Kastlex.MetadataCache do
 
   def get_topics() do
     [{:topics, topics}] = :ets.lookup(@table, :topics)
-    {:ok, topics}
+    topics
+  end
+
+  def partitions_by_leader() do
+    acc = Enum.reduce(get_brokers(), %{}, fn(b, acc) -> Map.put(acc, b.id, %{}) end)
+    List.foldl(get_topics(), acc,
+               fn(topic, acc) ->
+                 List.foldl(topic.partitions, acc,
+                            fn(p, acc2) ->
+                              leader_topics = acc2[p.leader]
+                              leader_partitions = [p.partition | Map.get(leader_topics, topic.topic, [])]
+                              leader_topics = Map.put(leader_topics, topic.topic, leader_partitions)
+                              Map.put(acc2, p.leader, leader_topics)
+                            end)
+               end)
   end
 
   def start_link(options) do

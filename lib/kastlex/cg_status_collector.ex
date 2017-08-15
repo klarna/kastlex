@@ -24,7 +24,7 @@ defmodule Kastlex.CgStatusCollector do
     Kastlex.MetadataCache.sync()
     cache_dir = Application.get_env(:kastlex, :cg_cache_dir, :priv)
     :ok = Kastlex.CgCache.init(cache_dir)
-    {:ok, topics} = Kastlex.MetadataCache.get_topics()
+    topics = Kastlex.MetadataCache.get_topics()
     case Enum.find(topics, nil, fn(x) -> x.topic == @topic end) do
       nil ->
         Logger.info "#{@topic} topic not found, skip cg_status_collector"

@@ -7,12 +7,11 @@ defmodule Kastlex.API.V1.BrokerController do
   plug Kastlex.Plug.EnsurePermissions
 
   def list_brokers(conn, _params) do
-    {:ok, brokers} = Kastlex.MetadataCache.get_brokers()
-    json(conn, brokers)
+    json(conn, Kastlex.MetadataCache.get_brokers())
   end
 
   def show_broker(conn, %{"broker" => id}) do
-    {:ok, brokers} = Kastlex.MetadataCache.get_brokers()
+    brokers = Kastlex.MetadataCache.get_brokers()
     {id, _} = Integer.parse(id)
     case Enum.find(brokers, nil, fn(x) -> x.id == id end) do
       nil ->
