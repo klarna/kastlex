@@ -14,16 +14,9 @@ defmodule Kastlex.API.V1.ConsumerController do
   def show_group(conn, %{"group_id" => group_id}) do
     case Kastlex.CgCache.get_group(group_id) do
       false -> send_json(conn, 404, %{error: "unknown group"})
-      group -> json(conn, fix_user_data(group) |> fix_offset_metadata)
-    end
-  end
-
-  def maxlag(conn, %{"group_id" => group_id}) do
-    case Kastlex.CgCache.get_group(group_id) do
-      false -> send_json(conn, 404, %{error: "unknown group"})
       group ->
-        maxlag = Enum.max_by(group.offsets, fn(x) -> x.lagging end)
-        send_json(conn, 200, maxlag.lagging)
+        group = group |> fix_user_data |> fix_offset_metadata |> add_maxlag
+        json(conn, group)
     end
   end
 
@@ -77,6 +70,12 @@ defmodule Kastlex.API.V1.ConsumerController do
       end
     end
     Map.put(group, :offsets, map_nullable_list(offsets, fix_fun))
+  end
+
+  defp add_maxlag(%{offsets: []} = group),  do: Map.put(group, :maxlag, -1)
+  defp add_maxlag(%{offsets: offsets} = group)  do
+    maxlag = Enum.max_by(offsets, fn(x) -> x.lagging end)
+    Map.put(group, :maxlag, maxlag.lagging)
   end
 
   defp is_null(nil) do true end

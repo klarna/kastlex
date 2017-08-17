@@ -10,7 +10,6 @@ anonymous:
   list_groups: true
   show_group: all
   produce: all
-  maxlag: all
 admin:
   produce: all
   reload: true
