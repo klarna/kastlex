@@ -37,7 +37,7 @@ defmodule Kastlex.OffsetsCache do
   end
 
   def handle_info(msg, state) do
-    Logger.error "Unexpected msg: #{msg}"
+    Logger.error "Unexpected msg: #{inspect msg}"
     {:noreply, state}
   end
 
