@@ -45,7 +45,7 @@ defmodule Kastlex.MetadataCache do
                fn(topic, acc) ->
                  List.foldl(topic.partitions, acc,
                             fn(p, acc2) ->
-                              leader_topics = acc2[p.leader]
+                              leader_topics = Map.get(acc2, p.leader, %{})
                               leader_partitions = [p.partition | Map.get(leader_topics, topic.topic, [])]
                               leader_topics = Map.put(leader_topics, topic.topic, leader_partitions)
                               Map.put(acc2, p.leader, leader_topics)
