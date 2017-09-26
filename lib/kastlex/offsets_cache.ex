@@ -46,6 +46,16 @@ defmodule Kastlex.OffsetsCache do
   end
 
   def refresh_leader_offsets({id, topics}, client_id) do
+    leader = Kastlex.MetadataCache.get_brokers |> Enum.find(fn(x) -> x.id == id end)
+    case leader do
+      nil ->
+        Logger.error("Error refresing offsets for node #{id}: not found in broker metadata")
+      _ ->
+        refresh_leader_offsets(leader, topics, client_id)
+    end
+  end
+
+  def refresh_leader_offsets(leader, topics, client_id) do
     topics = Enum.reduce(topics, [],
                          fn({t, partitions}, acc) ->
                            partition_fields = Enum.reduce(partitions, [],
@@ -58,7 +68,6 @@ defmodule Kastlex.OffsetsCache do
                          end)
     request_fields = [replica_id: -1, topics: topics]
     request = :kpro.req(:offsets_request, 0, request_fields)
-    leader = Kastlex.MetadataCache.get_brokers |> Enum.find(fn(x) -> x.id == id end)
     {:ok, pid} = :brod_client.get_connection(client_id, String.to_charlist(leader.host), leader.port)
     case :brod_sock.request_sync(pid, request, 10000) do
       {:ok, response} ->
