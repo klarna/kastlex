@@ -47,7 +47,7 @@ defmodule Kastlex.CgStatusCollector do
           f
       end
     {:ok, partitions_count} = :brod.get_partitions_count(client, @topic)
-    :brod.start_consumer(client, @topic, [])
+    :ok = :brod.start_consumer(client, @topic, [])
     workers = for partition <- 0..(partitions_count-1) do
                 spawn_link fn -> subscriber(client, partition, exclude) end
               end
@@ -59,6 +59,8 @@ defmodule Kastlex.CgStatusCollector do
   end
 
   def subscriber(client, partition, exclude) do
+    # Ensure subscriber running
+    :ok = :brod.start_consumer(client, @topic, [])
     begin_offset =
       case Kastlex.CgCache.get_progress(partition) do
         false  -> :earliest

@@ -16,7 +16,7 @@ defmodule KastlexTest do
   end
 
   test "get_brod_client_config ssl true" do
-    f = fn("KASTLEX_KAFKA_USE_SSL") -> true
+    f = fn("KASTLEX_KAFKA_USE_SSL") -> "true"
           (_) -> nil
     end
     with_mock System, [:passthrough], [get_env: f] do
@@ -79,7 +79,7 @@ defmodule KastlexTest do
                   auto_start_producers: true,
                   default_producer_config: [],
                   ssl: false,
-                  sasl: {:plain, "foo", "bar"}
+                  sasl: {:plain, 'foo', 'bar'}
                  ]
       assert expected == Kastlex.get_brod_client_config
     end
