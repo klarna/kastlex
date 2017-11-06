@@ -43,6 +43,7 @@ cURL example (-d implies POST):
     curl -s -i -H "Content-Type: application/binary" localhost:8092/api/v1/messages/foo -d bar
 
 ## Fetch messages
+API v1
 
     GET /api/v1/messages/:topic/:partition
     GET /api/v1/messages/:topic/:partition/:offset
@@ -61,32 +62,44 @@ cURL example (-d implies POST):
       "errorCode": "no_error"
     }
 
+API v2
+
+    GET /api/v2/messages/:topic/:partition
+    GET /api/v2/messages/:topic/:partition/:offset
+    [
+      {
+        "value": "test",
+        "ts_type": null,
+        "ts": null,
+        "offset": 312,
+        "magic_byte": 0,
+        "key": null,
+        "crc": 1495943047,
+        "attributes": 0
+      }
+    ]
+
 Optional parameters:
   * `max_wait_time`: maximum time in ms to wait for the response, default 1000
   * `min_bytes`: minimum bytes to accumulate in the response, default 1
   * `max_bytes`: maximum bytes to fetch, default 100 kB
 
-`offset` can be an exact offset, -1 or `latest` for latest, -2 or
-`earliest` for earliest.  In 2 last scenarios KastleX will perform
-additional `offset` requests to Kafka to get real offset. When
-`offset` is omitted, KastleX will assume `latest`.
+`offset` can be an exact offset, `latest`, `earliest` or negative. Default latest.
+When negative, KastleX will assume it's a relative offset to the `latest`.
 
 With `Accept: application/json` header the response will include all
 of the messages returned from kafka with their metadata
 
-With `Accept: application/binary` header KastleX will return value
-part of the last message in the message set. It will also set
-additional headers, `x-high-wm-offset` and `x-message-size` which
-correspond to `highWmOffset` and `size` fields in json response.
+With `Accept: application/binary` header KastleX will return `value`
+only of the last message in the message set.
 
 ## Query available offsets for partition.
 
     GET /api/v1/offsets/:topic/:partition
-    [20]
+    {"offset": 20}
 
 Optional parameters:
   * `at`: point of interest, `latest`, `earliest`, or a number, default `latest`
-  * `max_offsets`: how many offsets to return, integer, default 1
 
 ## Consumer groups
 

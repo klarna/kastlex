@@ -16,7 +16,7 @@ defmodule Kastlex.CgStatusCollector do
   end
 
   def init(options) do
-    send self, {:post_init, options}
+    send self(), {:post_init, options}
     {:ok, %{}}
   end
 
@@ -24,7 +24,7 @@ defmodule Kastlex.CgStatusCollector do
     Kastlex.MetadataCache.sync()
     cache_dir = Application.get_env(:kastlex, :cg_cache_dir, :priv)
     :ok = Kastlex.CgCache.init(cache_dir)
-    {:ok, topics} = Kastlex.MetadataCache.get_topics()
+    topics = Kastlex.MetadataCache.get_topics()
     case Enum.find(topics, nil, fn(x) -> x.topic == @topic end) do
       nil ->
         Logger.info "#{@topic} topic not found, skip cg_status_collector"
@@ -47,7 +47,9 @@ defmodule Kastlex.CgStatusCollector do
           f
       end
     {:ok, partitions_count} = :brod.get_partitions_count(client, @topic)
-    :ok = :brod.start_consumer(client, @topic, [])
+    options = [begin_offset: :earliest,
+               offset_reset_policy: :reset_to_earliest]
+    :ok = :brod.start_consumer(client, @topic, options)
     workers = for partition <- 0..(partitions_count-1) do
                 spawn_link fn -> subscriber(client, partition, exclude) end
               end
@@ -141,19 +143,27 @@ defmodule Kastlex.CgStatusCollector do
     end
   end
 
-  defp handle_message(msg, exclude) do
-    key_bin = kafka_message(msg, :key)
-    value_bin = kafka_message(msg, :value)
-    {tag, key, value} = :kpro_consumer_group.decode(key_bin, value_bin)
-    case exclude.(key[:group_id]) do
-      true ->
-        :ok
-      false ->
-        case tag do
-          :offset -> Kastlex.CgCache.committed_offset(key, value)
-          :group -> Kastlex.CgCache.new_cg_status(key, value)
-        end
-        :ok
+  defp handle_message(orig_msg, exclude) do
+    msg = kafka_message(orig_msg)
+    key_bin = msg[:key]
+    value_bin = msg[:value]
+    try do
+      {tag, key, value} = :kpro_consumer_group.decode(key_bin, value_bin)
+      case exclude.(key[:group_id]) do
+        true ->
+          :ok
+        false ->
+          case tag do
+            :offset -> Kastlex.CgCache.committed_offset(key, value)
+            :group -> Kastlex.CgCache.new_cg_status(key, value)
+          end
+          :ok
+      end
+    rescue e ->
+      Logger.error "Failed to process #{inspect orig_msg} from __consumer_offsets: #{inspect e}"
+      Logger.debug "key: #{inspect(key_bin, [limit: 10000])}"
+      Logger.debug "value: #{inspect(value_bin, [limit: 10000])}"
+      :ok
     end
   end
 end

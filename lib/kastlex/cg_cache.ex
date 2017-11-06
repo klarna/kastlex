@@ -6,10 +6,6 @@ defmodule Kastlex.CgCache do
   @cgs :cg_cache_cgs # dets table for cg status
   @progress :cg_cache_progress # dets table for cg data collection progress
 
-  ## message tags
-  @offset :offset
-  @cg :cg
-
   ## return all (active/inactive consumer groups)
   def get_groups() do
     ## return all active consumer groups
@@ -134,13 +130,13 @@ defmodule Kastlex.CgCache do
       end
     case offset_hwm do
       -1 ->
-        "no-hw-offset"
+        -1
       -2 ->
-        "no-offset-cache"
+        -2
       n when n > offset ->
         n - offset - 1
       _ ->
-        "0"
+        0
     end
   end
 end

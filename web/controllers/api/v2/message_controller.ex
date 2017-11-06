@@ -1,4 +1,4 @@
-defmodule Kastlex.API.V1.MessageController do
+defmodule Kastlex.API.V2.MessageController do
 
   require Logger
   require Record
@@ -80,14 +80,8 @@ defmodule Kastlex.API.V1.MessageController do
                 {max_wait_time, _} = Integer.parse(Map.get(params, "max_wait_time", "1000"))
                 {min_bytes, _} = Integer.parse(Map.get(params, "min_bytes", "1"))
                 {max_bytes, _} = Integer.parse(Map.get(params, "max_bytes", "104857600")) # 100 kB
-                request = :kpro.fetch_request(_vsn = 0,
-                                              topic,
-                                              partition,
-                                              offset,
-                                              max_wait_time,
-                                              min_bytes,
-                                              max_bytes)
-                response = :brod_sock.request_sync(pid, request, :infinity) |> handle_fetch_response(type, offset)
+                fetch = :brod_utils.make_fetch_fun(pid, topic, partition, max_wait_time, min_bytes, max_bytes)
+                response = fetch.(offset) |> handle_fetch_response(type)
                 respond(conn, response, type)
               error ->
                 Logger.error "Cannot resolve logical offset #{orig_offset}: #{inspect error}"
@@ -105,50 +99,36 @@ defmodule Kastlex.API.V1.MessageController do
     end
   end
 
-  defp handle_fetch_response({:error, _} = error, _type, _offset), do: error
-  defp handle_fetch_response({:ok, response}, type, offset) do
-    [topic_response] = kpro_rsp(response)[:msg][:responses]
-    [partition_response] = topic_response[:partition_responses]
-    messages = :brod_utils.decode_messages(offset, partition_response[:record_set])
+  defp handle_fetch_response({:error, _} = error, _type), do: error
+  defp handle_fetch_response({:ok, messages}, type) do
     case type do
       "json" ->
-        messages = messages |> Enum.map(&transform_kafka_message/1)
-        resp = %{size: nil,
-                 highWmOffset: partition_response[:partition_header][:high_watermark],
-                 error_code: partition_response[:partition_header][:error_code],
-                 messages: messages
-                }
-        {:ok, resp}
+        messages = messages |>
+          Enum.map(&to_kafka_message/1) |>
+          Enum.map(fn(x) -> Enum.map(x, &undef_to_nil/1) end) |>
+          Enum.map(&Map.new/1)
+        {:ok, messages}
       "binary" ->
         payload = messages |> hd |> kafka_message(:value) |> undef_to_empty
-        resp = %{payload: payload,
-                 high_watermark: partition_response[:partition_header][:high_watermark]
-                }
-        {:ok, resp}
+        {:ok, payload}
     end
   end
 
-  defp transform_kafka_message(raw_msg) do
-    msg = kafka_message(raw_msg)
-    %{key: undef_to_nil(msg[:key]),
-      value: undef_to_nil(msg[:value]),
-      offset: msg[:offset],
-      crc: msg[:crc]
-     }
-  end
+  defp to_kafka_message(x), do: kafka_message(x)
 
-  defp undef_to_nil(:undefined), do: nil
-  defp undef_to_nil(x),          do: x
+  defp undef_to_nil({k, :undefined}), do: {k, nil}
+  defp undef_to_nil({k, v}),          do: {k, v}
 
   defp undef_to_empty(:undefined), do: ""
-  defp undef_to_empty(x),          do: x
+  defp undef_to_empty(v),          do: v
 
-  defp respond(conn, {:ok, resp}, "json"), do: json(conn, resp)
-  defp respond(conn, {:ok, resp}, "binary") do
+  defp respond(conn, {:ok, messages}, "json") do
+    send_json(conn, 200, messages)
+  end
+  defp respond(conn, {:ok, payload}, "binary") do
     conn
     |> put_resp_content_type("application/binary")
-    |> put_resp_header("x-high-wm-offset", Integer.to_string(resp.high_watermark))
-    |> send_resp(200, resp.payload)
+    |> send_resp(200, payload)
   end
   defp respond(conn, {:error, reason}, "json") do
     send_json(conn, 503, %{error: reason})
@@ -157,26 +137,34 @@ defmodule Kastlex.API.V1.MessageController do
     send_resp(conn, 503, "error: #{inspect reason}")
   end
 
-  defp resolve_offset(pid, t, p, orig_offset) do
-    offset = Kastlex.KafkaUtils.parse_logical_offset(orig_offset)
-    case offset < 0 do
-      true ->
-        do_resolve_offset(pid, t, p, offset)
-      false ->
-        {:ok, offset}
+  # "latest" offset in offset request means "high watermark",
+  # there is no message at this offset in kafka.
+  # We are compensating for this by subtracting 1 from the result of
+  # resolving "latest" offset
+  defp resolve_offset(pid, t, p, "latest") do
+    case :brod_utils.resolve_offset(pid, t, p, :latest) do
+      {:ok, latest} -> {:ok, latest - 1}
+      {:error, _} = error -> error
+    end
+  end
+  defp resolve_offset(pid, t, p, "earliest") do
+    :brod_utils.resolve_offset(pid, t, p, :earliest)
+  end
+  defp resolve_offset(pid, t, p, offset) do
+    case Integer.parse(offset) do
+      {num, _} -> resolve_numeric_offset(pid, t, p, num)
+      :error -> {:error, "invalid offset"}
     end
   end
 
-  defp do_resolve_offset(pid, t, p, logical_offset) do
-    case :brod_utils.resolve_offset(pid, t, p, logical_offset) do
-      {:ok, offset} ->
-        case logical_offset == -1 do # latest
-          true -> {:ok, offset-1}
-          false -> {:ok, offset}
-        end
-      {:error, _} = error ->
-        error
+  defp resolve_numeric_offset(pid, t, p, offset) when offset < 0 do
+    case :brod_utils.resolve_offset(pid, t, p, :latest) do
+      {:ok, latest} -> {:ok, latest + offset}
+      {:error, _} = error -> error
     end
+  end
+  defp resolve_numeric_offset(pid, t, p, offset) do
+    :brod_utils.resolve_offset(pid, t, p, offset)
   end
 
 end

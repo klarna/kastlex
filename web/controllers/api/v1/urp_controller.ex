@@ -7,7 +7,7 @@ defmodule Kastlex.API.V1.UrpController do
   plug Kastlex.Plug.EnsurePermissions
 
   def list_urps(conn, _params) do
-    {:ok, topics} = Kastlex.MetadataCache.get_topics()
+    topics = Kastlex.MetadataCache.get_topics()
     urp = List.foldl(topics, [],
                      fn (t, acc) ->
                        urp = get_urp(t.partitions)
@@ -24,7 +24,7 @@ defmodule Kastlex.API.V1.UrpController do
   end
 
   def show_urps(conn, %{"topic" => name}) do
-    {:ok, topics} = Kastlex.MetadataCache.get_topics()
+    topics = Kastlex.MetadataCache.get_topics()
     case Enum.find(topics, nil, fn(x) -> x.topic == name end) do
       nil ->
         send_json(conn, 404, %{error: "unknown topic"})

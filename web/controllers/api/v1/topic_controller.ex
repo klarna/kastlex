@@ -7,13 +7,12 @@ defmodule Kastlex.API.V1.TopicController do
   plug Kastlex.Plug.EnsurePermissions
 
   def list_topics(conn, _params) do
-    {:ok, topics} = Kastlex.MetadataCache.get_topics()
-    topics = Enum.map(topics, fn(x) -> x.topic end)
+    topics = Kastlex.MetadataCache.get_topics() |> Enum.map(fn(x) -> x.topic end)
     json(conn, topics)
   end
 
   def show_topic(conn, %{"topic" => name}) do
-    {:ok, topics} = Kastlex.MetadataCache.get_topics()
+    topics = Kastlex.MetadataCache.get_topics()
     case Enum.find(topics, nil, fn(x) -> x.topic == name end) do
       nil ->
         send_json(conn, 404, %{error: "Unknown topic"})

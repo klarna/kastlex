@@ -4,8 +4,8 @@ defmodule Kastlex.Mixfile do
   def project do
     [app: :kastlex,
      description: "Apache Kafka REST Proxy",
-     version: "1.3.4",
-     elixir: "~> 1.4",
+     version: "1.4.0",
+     elixir: "~> 1.5",
      elixirc_paths: elixirc_paths(Mix.env),
      compilers: [:phoenix, :gettext] ++ Mix.compilers,
      build_embedded: Mix.env == :prod,
@@ -37,23 +37,23 @@ defmodule Kastlex.Mixfile do
   defp elixirc_paths(_),     do: ["lib", "web"]
 
   defp deps do
-    [{:phoenix, "~> 1.2"},
+    [{:phoenix, "~> 1.3"},
      {:phoenix_pubsub, "~> 1.0"},
      {:phoenix_live_reload, "~> 1.0", only: :dev},
-     {:mock, "~> 0.2.0", only: :test},
+     {:mock, "~> 0.2", only: :test},
      {:briefly, "~> 0.3", only: :test},
      {:logger_file_backend, "0.0.9"},
      {:observer_cli, "~> 1.0.8"},
      {:recon, "~> 2.3.2"},
-     {:gettext, "~> 0.12"},
+     {:gettext, "~> 0.13"},
      {:phoenix_html, "~> 2.8.0"},
-     {:cowboy, "~> 1.0"},
-     {:yaml_elixir, "~> 1.2"},
-     {:brod, "~> 2.5"},
+     {:cowboy, "~> 1.1"},
+     {:yaml_elixir, "~> 1.3"},
+     {:brod, "~> 3.0"},
      {:distillery, "~> 0.10"},
-     {:guardian, "~> 0.14.2"},
+     {:guardian, "~> 0.14.5"},
      {:erlzk, "~> 0.6.3"},
-     {:comeonin, "~> 2.5"},
+     {:comeonin, "~> 2.6"},
     ]
   end
 
