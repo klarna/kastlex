@@ -32,6 +32,10 @@ defmodule Kastlex.Router do
     get "/favicon.ico", CatchAllController, :favicon
   end
 
+  scope "/", Kastlex do
+    get "/metrics", MetricsController, :fetch
+  end
+
   scope "/admin", as: :admin, alias: Kastlex.Admin do
     pipe_through [:api, :auth]
     get "/reload", AdminController, :reload

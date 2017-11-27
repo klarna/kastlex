@@ -25,6 +25,26 @@ It also needs `kastlex` topic with a single partition, and
 `auto.create.topics.enable` parameter in Kafka's server.properties set
 to `false`.
 
+## Manual testing
+
+1. Run kafka with zookeeper locally
+
+
+    docker run -p 2181:2181 -p 9092:9092 --env ADVERTISED_HOST=localhost --env ADVERTISED_PORT=9092 spotify/kafka
+
+2. Start consumer group
+
+
+    kafkacat -b localhost:9092 -G testcg events
+
+3. Manually produce a few messages
+
+
+    kafkacat -P -b localhost:9092 -t events -p 0
+
+4. Verify that endpoint works, eg `localhost:8092/metrics`
+
+
 # API
 
 ## Produce messages

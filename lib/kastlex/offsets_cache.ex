@@ -17,6 +17,13 @@ defmodule Kastlex.OffsetsCache do
     end
   end
 
+  def get_offsets do
+    :ets.tab2list(@table)
+    |> Enum.map(fn({{topic, partition}, offset}) ->
+      %{topic: topic, partition: partition, offset: offset}
+    end)
+  end
+
   def start_link(options) do
     GenServer.start_link(__MODULE__, options, [name: @server])
   end
