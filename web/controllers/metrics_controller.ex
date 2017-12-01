@@ -50,6 +50,6 @@ defmodule Kastlex.MetricsController do
   defp topic_offset_to_prometheus(topic_offset) do
     %{topic: topic, partition: partition, offset: offset} = topic_offset
 
-    ~s(kafka_topic_offset{topic="#{topic}" partition="#{partition}"} #{offset})
+    ~s(kafka_topic_offset{topic="#{topic}", partition="#{partition}"} #{offset})
   end
 end
