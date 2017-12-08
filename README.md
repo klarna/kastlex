@@ -27,23 +27,19 @@ to `false`.
 
 ## Manual testing
 
-1. Run kafka with zookeeper locally
-
-
-    docker run -p 2181:2181 -p 9092:9092 --env ADVERTISED_HOST=localhost --env ADVERTISED_PORT=9092 spotify/kafka
-
+1. Bring environment up
+    ```
+        docker-compose up
+    ```
 2. Start consumer group
-
-
-    kafkacat -b localhost:9092 -G testcg events
-
-3. Manually produce a few messages
-
-
-    kafkacat -P -b localhost:9092 -t events -p 0
-
-4. Verify that endpoint works, eg `localhost:8092/metrics`
-
+    ```
+        kafkacat -b localhost:9092 -G test-consumer-group test-topic
+    ```
+3. Start producing to that consumer group
+    ```
+        LC_CTYPE=C watch -n 1 "cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1 | kafkacat -P -b localhost:9092 -t test-topic -p 0"
+    ```
+4. Access Prometheus [http://localhost:9090](http://localhost:9090) and verify that metrics were consumed.
 
 # API
 

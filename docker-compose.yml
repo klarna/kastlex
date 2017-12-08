@@ -1,0 +1,29 @@
+version: "2"
+
+services:
+  kastlex:
+    build: .
+    hostname: kastlex
+    ports:
+      - 8092
+    depends_on:
+      - kafka
+    command: bash -c "socat TCP-LISTEN:9092,fork TCP:kafka:9092 & socat TCP-LISTEN:2181,fork TCP:kafka:2181 & mix phoenix.server"
+
+  kafka:
+    image: spotify/kafka
+    hostname: kafka
+    environment:
+      ADVERTISED_HOST: localhost
+    ports:
+      - 9092:9092
+      - 2181
+
+  prometheus:
+    image: prom/prometheus
+    volumes:
+      - ./docker/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+    ports:
+      - 9090:9090
+    depends_on:
+      - kastlex

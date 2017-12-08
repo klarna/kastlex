@@ -8,7 +8,8 @@ defmodule Kastlex.MetricsController do
   use Kastlex.Web, :controller
 
   def fetch(conn, _params) do
-    metrics = Enum.join(offsets(), "\n")
+    # Newline at the end is needed to satisfy Prometheus parser
+    metrics = Enum.join(offsets(), "\n") <> "\n"
 
     conn
     |> put_resp_content_type("text/plain; version=0.0.4")
