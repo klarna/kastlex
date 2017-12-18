@@ -38,6 +38,18 @@ defmodule Kastlex.CgCache do
     end
   end
 
+  ## Returns all consumer groups with their committed offsets
+  def get_consumer_groups_offsets() do
+    :dets.select(@offsets, [{{:"$1", :"$2"}, [], [{{:"$1", :"$2"}}]}])
+    |> Enum.flat_map(fn({group_id, topics}) ->
+      topics
+      |> Enum.map(fn({{topic, partition}, details}) ->
+        offset =  Keyword.fetch!(details, :offset)
+        %{group_id: group_id, topic: topic, partition: partition, offset: offset}
+      end)
+    end)
+  end
+
   def committed_offset(key, value) do
     group_id = ets_key = key[:group_id]
     map_key = {key[:topic], key[:partition]}

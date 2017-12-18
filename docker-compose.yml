@@ -4,11 +4,14 @@ services:
   kastlex:
     build: .
     hostname: kastlex
+    environment:
+      KASTLEX_KAFKA_CLUSTER: kafka:9092
+      KASTLEX_ZOOKEEPER_CLUSTER: kafka:2181
     ports:
       - 8092
     depends_on:
       - kafka
-    command: bash -c "socat TCP-LISTEN:9092,fork TCP:kafka:9092 & socat TCP-LISTEN:2181,fork TCP:kafka:2181 & mix phoenix.server"
+    command: mix phoenix.server
 
   kafka:
     image: spotify/kafka
