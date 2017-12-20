@@ -16,3 +16,8 @@ erl_crash.dump
 # variables.
 /config/prod.secret.exs
 *.dets
+
+# downloaded brod
+brod.zip
+brod-*
+

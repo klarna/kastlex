@@ -1,4 +1,5 @@
 defmodule Kastlex.CgCache do
+  @compile if Mix.env == :test, do: :export_all
   require Logger
 
   ## dets tables
@@ -19,6 +20,7 @@ defmodule Kastlex.CgCache do
     committed_offsets =
       lookup(@offsets, group_id, %{}) |>
       Enum.map(fn({{topic, partition}, details}) ->
+                 details = maybe_fix_brod_commits(details)
                  offset = Keyword.fetch!(details, :offset)
                  [ {:topic, topic},
                    {:partition, partition},
@@ -145,11 +147,39 @@ defmodule Kastlex.CgCache do
         -1
       -2 ->
         -2
-      n when n > offset ->
-        n - offset - 1
+      n when n >= offset ->
+        n - offset
       _ ->
+        # high-watermark offset is not up-to-date
         0
     end
+  end
+
+  # brod prior to 3.3.4 (roundrobin_v2) commits consumed-offsets
+  # instead of next-to-fetch offset
+  # Here we try to find out if the commit is from brod roundrobin (v1) protocol
+  # and +1 on the committed offset to correct it
+  # This correction is necessary because otherwise KastleX will report
+  # lagging = 1 for brod < 3.3.4 when lagging is actually 0
+  defp maybe_fix_brod_commits(details) do
+    metadata = Keyword.fetch!(details, :metadata)
+    case is_brod_roundrobin_v1_commit(metadata) do
+      true ->
+        offset = Keyword.fetch!(details, :offset)
+        Keyword.put(details, :offset, offset + 1)
+      false ->
+        details
+    end
+  end
+
+  # brod roundrobin v2 group protocol commits offsets with
+  # "+1/" prefix. roundrobin (v1) protocol commits offsets with
+  # metadata matches the above regexp
+  defp is_brod_roundrobin_v1_commit(:undefined), do: false
+  defp is_brod_roundrobin_v1_commit("+1/" <> _), do: false
+  defp is_brod_roundrobin_v1_commit(metadata) do
+    re = Regex.compile!(".*@.*[/|\s]<0\.[0-9]+\.[0-9]+>$")
+    Regex.match?(re, metadata)
   end
 end
 

@@ -4,7 +4,7 @@ defmodule Kastlex.Mixfile do
   def project do
     [app: :kastlex,
      description: "Apache Kafka REST Proxy",
-     version: "1.5.3",
+     version: "1.5.4",
      elixir: "~> 1.5",
      elixirc_paths: elixirc_paths(Mix.env),
      compilers: [:phoenix, :gettext] ++ Mix.compilers,
@@ -27,9 +27,8 @@ defmodule Kastlex.Mixfile do
     [mod: {Kastlex, []},
      applications: [:logger, :phoenix, :phoenix_pubsub, :phoenix_html, :cowboy,
                     :gettext, :yamerl, :yaml_elixir, :comeonin, :erlzk, :brod,
-                    :kafka_protocol, :supervisor3, :snappyer, :guardian, :ssl,
-                    :observer, :logger_file_backend, :runtime_tools, :observer_cli,
-                    :recon]]
+                    :guardian, :ssl, :observer, :logger_file_backend,
+                    :runtime_tools, :observer_cli, :recon]]
   end
 
   # Specifies which paths to compile per environment.

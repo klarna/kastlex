@@ -191,7 +191,7 @@ function makeCgTreeNodeChildren(r) {
     var offsetsNode =
       { treenodename: "offsets"
       , headers: keys.map(function(k) {return k.name;})
-      , tabledata: r.offsets.map(function(offset) {
+      , tabledata: r.offsets.sort().map(function(offset) {
                       return makeCgOffsetsRow(offset, keys);
                     })
       };
