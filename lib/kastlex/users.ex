@@ -21,7 +21,7 @@ defmodule Kastlex.Users do
 
   def get_user(name) do
     case :ets.lookup(@table, name) do
-      [] -> []
+      [] -> false
       [{_, user}] -> user
     end
   end
