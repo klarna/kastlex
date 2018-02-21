@@ -22,7 +22,10 @@ defmodule Kastlex.Plug.EnsurePermissions do
     end
   end
   defp check_permissions(_user, conn, opts) do
-    check_permissions(Kastlex.Users.get_anonymous(), conn, opts)
+    case Kastlex.Users.get_anonymous() do
+      false -> handle_perms_error("anonymous", conn, opts)
+      user -> check_permissions(user, conn, opts)
+    end
   end
 
   defp has_permissions?(:list_topics = action, "GET", user, _), do: Keyword.get(user, action, false)

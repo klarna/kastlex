@@ -6,11 +6,11 @@ See also [Kastle](https://github.com/klarna/kastle).
 # Get started
 
     mix deps.get
-    mix phoenix.server
+    mix phx.server
 
 To start with an interactive shell:
 
-    iex --sname kastlex -S mix phoenix.server
+    iex --sname kastlex -S mix phx.server
 
 By default KastleX will try to connect to kafka at localhost:9092 and to zookeeper on localhost:2181.
 
