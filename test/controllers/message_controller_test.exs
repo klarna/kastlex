@@ -146,7 +146,7 @@ defmodule Kastlex.MessageControllerTest do
     assert Kernel.is_map(response)
   end
 
-  test "creates resource", params do
+  test "creates resource (content type binary)", params do
     {:ok, token, _} = Guardian.encode_and_sign(%{user: "test"})
     build_conn()
     |> put_req_header("content-type", "application/binary")
@@ -156,14 +156,14 @@ defmodule Kastlex.MessageControllerTest do
 
   end
 
-  test "does not create resource when permissions are not set", params do
+  test "does not create resource when permissions are not set (content type binary)", params do
     build_conn()
     |> put_req_header("content-type", "application/binary")
     |> post(api_v1_message_path(build_conn(), :produce, params[:topic]), "test")
     |> response(403)
   end
 
-  test "does not create resource with wrong permissions", params do
+  test "does not create resource with wrong permissions (content type binary)", params do
     {:ok, token, _} = Guardian.encode_and_sign(%{user: "wrong"})
     build_conn()
     |> put_req_header("content-type", "application/binary")
@@ -172,7 +172,7 @@ defmodule Kastlex.MessageControllerTest do
     |> response(403)
   end
 
-  test "does not create resource with wrong resource permissions", params do
+  test "does not create resource with wrong resource permissions (content type binary)", params do
     {:ok, token, _} = Guardian.encode_and_sign(%{user: "wrong_topic"})
     build_conn()
     |> put_req_header("content-type", "application/binary")
@@ -181,10 +181,54 @@ defmodule Kastlex.MessageControllerTest do
     |> response(403)
   end
 
-  test "returns 404 on POST when resource does not exist", _params do
+  test "returns 404 on POST when resource does not exist (content type binary)", _params do
     {:ok, token, _} = Guardian.encode_and_sign(%{user: "not_exist"})
     build_conn()
     |> put_req_header("content-type", "application/binary")
+    |> put_req_header("authorization", "Bearer #{token}")
+    |> post(api_v1_message_path(build_conn(), :produce, "not_exist"), "test")
+    |> response(404)
+  end
+  
+  test "creates resource (content type json)", params do
+    {:ok, token, _} = Guardian.encode_and_sign(%{user: "test"})
+    build_conn()
+    |> put_req_header("content-type", "application/json")
+    |> put_req_header("authorization", "Bearer #{token}")
+    |> post(api_v1_message_path(build_conn(), :produce, params[:topic]), "test")
+    |> response(204)
+
+  end
+
+  test "does not create resource when permissions are not set (content type json)", params do
+    build_conn()
+    |> put_req_header("content-type", "application/json")
+    |> post(api_v1_message_path(build_conn(), :produce, params[:topic]), "test")
+    |> response(403)
+  end
+
+  test "does not create resource with wrong permissions (content type json)", params do
+    {:ok, token, _} = Guardian.encode_and_sign(%{user: "wrong"})
+    build_conn()
+    |> put_req_header("content-type", "application/json")
+    |> put_req_header("authorization", "Bearer #{token}")
+    |> post(api_v1_message_path(build_conn(), :produce, params[:topic]), "test")
+    |> response(403)
+  end
+
+  test "does not create resource with wrong resource permissions (content type json)", params do
+    {:ok, token, _} = Guardian.encode_and_sign(%{user: "wrong_topic"})
+    build_conn()
+    |> put_req_header("content-type", "application/json")
+    |> put_req_header("authorization", "Bearer #{token}")
+    |> post(api_v1_message_path(build_conn(), :produce, params[:topic]), "test")
+    |> response(403)
+  end
+
+  test "returns 404 on POST when resource does not exist (content type json)", _params do
+    {:ok, token, _} = Guardian.encode_and_sign(%{user: "not_exist"})
+    build_conn()
+    |> put_req_header("content-type", "application/json")
     |> put_req_header("authorization", "Bearer #{token}")
     |> post(api_v1_message_path(build_conn(), :produce, "not_exist"), "test")
     |> response(404)
