@@ -46,11 +46,6 @@ defmodule Kastlex do
     brod_client_config = get_brod_client_config(true)
     :ok = :brod.start_client(kafka_cluster, :kastlex, brod_client_config)
 
-    # zookeeper connection
-    zk_cluster = system_env("KASTLEX_ZOOKEEPER_CLUSTER", [{'localhost', 2181}], &parse_endpoints/1)
-    Logger.info "Zookeeper cluster: #{inspect zk_cluster}"
-    Application.put_env(:kastlex, :zk_cluster, zk_cluster)
-
     children = [
       worker(Kastlex.Users, []),
       worker(Kastlex.TokenStorage, []),
@@ -64,8 +59,6 @@ defmodule Kastlex do
   end
 
   def get_brod_client_id(), do: :kastlex
-
-  def get_zk_cluster(), do: Application.fetch_env!(:kastlex, :zk_cluster)
 
   # Tell Phoenix to update the endpoint configuration
   # whenever the application is updated.

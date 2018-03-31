@@ -20,15 +20,16 @@ defmodule Kastlex.Mixfile do
      version: &version/1,
      hashpw: &hashpw/1,
      verify: &verify/1, # verify jwt
+     shell: &shell/1,
     ]
   end
 
   def application do
     [mod: {Kastlex, []},
-     applications: [:logger, :phoenix, :phoenix_pubsub, :phoenix_html, :cowboy,
-                    :gettext, :yamerl, :yaml_elixir, :comeonin, :erlzk, :brod,
+     applications: [:logger, :brod, :phoenix, :phoenix_pubsub, :phoenix_html, :cowboy,
+                    :gettext, :yamerl, :yaml_elixir, :comeonin,
                     :guardian, :ssl, :logger_file_backend,
-                    :runtime_tools, :observer_cli, :recon]]
+                    :runtime_tools, :recon]]
   end
 
   # Specifies which paths to compile per environment.
@@ -47,8 +48,9 @@ defmodule Kastlex.Mixfile do
      {:gettext, "~> 0.13"},
      {:phoenix_html, "~> 2.8.0"},
      {:cowboy, "~> 1.1"},
-     {:yaml_elixir, "~> 1.3"},
+     {:yaml_elixir, "~> 2.1"},
      {:brod, "~> 3.7"},
+     {:kafka_protocol, "~> 2.2", override: true},
      {:distillery, "~> 2.0"},
      {:guardian, "~> 0.14.5"},
      {:erlzk, "~> 0.6.3"},
@@ -96,6 +98,10 @@ defmodule Kastlex.Mixfile do
     {valid, jwt, _jws} = JOSE.JWT.verify_strict(jwk, ["ES512"], token)
     Mix.shell.info("Token is valid: #{inspect valid}")
     Mix.shell.info("#{Poison.encode_to_iodata!(jwt, pretty: true)}")
+  end
+
+  defp shell(args) do
+    Mix.Tasks.Loadpaths.run(args)
   end
 
 end

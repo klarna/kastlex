@@ -11,16 +11,16 @@ defmodule Kastlex.CgStatusCollector do
   @topic "__consumer_offsets"
   @resubscribe_delay 10_000
 
-  def start_link(options) do
-    GenServer.start_link(__MODULE__, options, [name: @server])
+  def start_link() do
+    GenServer.start_link(__MODULE__, [], [name: @server])
   end
 
-  def init(options) do
-    send self(), {:post_init, options}
+  def init([]) do
+    send self(), :post_init
     {:ok, %{}}
   end
 
-  def handle_info({:post_init, options}, state) do
+  def handle_info(:post_init, state) do
     Kastlex.MetadataCache.sync()
     cache_dir = Application.get_env(:kastlex, :cg_cache_dir, :priv)
     :ok = Kastlex.CgCache.init(cache_dir)
@@ -29,12 +29,12 @@ defmodule Kastlex.CgStatusCollector do
       nil ->
         Logger.info "#{@topic} topic not found, skip cg_status_collector"
       _ ->
-        send self(), {:post_init2, options}
+        send self(), :post_init2
     end
     {:noreply, state}
   end
-  def handle_info({:post_init2, options}, state) do
-    client = options.brod_client_id
+  def handle_info(:post_init2, state) do
+    client = Kastlex.get_brod_client_id()
     cg_exclude_regex = Application.get_env(:kastlex, :cg_exclude_regex, nil)
     exclude =
       case cg_exclude_regex do
