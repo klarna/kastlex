@@ -24,7 +24,7 @@ defmodule Kastlex.CgCache do
                  [ {:topic, topic},
                    {:partition, partition},
                    {:lagging, get_lagging(topic, partition, offset)}
-                 | to_list(details)] |> to_maps
+                 | to_list(details)] |> Kastlex.CgLib.to_maps
                end)
     case lookup(@cgs, group_id, false) do
       false ->
@@ -33,7 +33,7 @@ defmodule Kastlex.CgCache do
           :status => :inactive
          }
       value ->
-        to_maps([{:status, value}]) |>
+        Kastlex.CgLib.to_maps([{:status, value}]) |>
         put(:group_id, group_id) |>
         put(:offsets, committed_offsets)
     end
@@ -133,18 +133,8 @@ defmodule Kastlex.CgCache do
   defp put(x, key, val) when is_map(x), do: Map.put(x, key, val)
   defp put(x, key, val) when is_list(x), do: Keyword.put(x, key, val)
 
-  # this is kept for backward compatibility
-  # becase kastlex may get upgraded to work with ealier version dets cache
-  defp to_maps({k, [x | _] = v}) when is_list(x), do: {k, :lists.map(&to_maps/1, v)}
-  defp to_maps({k, [x | _] = v}) when is_tuple(x), do: {k, Map.new(v, &to_maps/1)}
-  defp to_maps([{_, _} | _] = x), do: Map.new(:lists.map(&to_maps/1, x))
-  defp to_maps({k, v}), do: {k, maybe_nil(v)}
-
   defp to_list(l) when is_list(l), do: l
   defp to_list(m) when is_map(m), do: Map.to_list(m)
-
-  defp maybe_nil(:undefined), do: nil
-  defp maybe_nil(value), do: value
 
   defp get_lagging(topic, partition, offset) do
     offset_hwm =

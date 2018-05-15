@@ -104,9 +104,15 @@ defmodule Kastlex do
                         Keyword.put(endpoint, :secret_key_base, secret_key_base))
   end
 
-  defp maybe_set_guardian_secret_key(nil), do: :ok
+  defp maybe_set_guardian_secret_key(nil) do
+    init_secret_key(Application.get_env(:guardian, Guardian)[:secret_key_file])
+  end
   defp maybe_set_guardian_secret_key(file) do
-    Logger.info "Using custom jwk from file: #{file}"
+    init_secret_key(file)
+  end
+
+  defp init_secret_key(file) do
+    Logger.info "Reading secret key from #{file}"
     jwk = JOSE.JWK.from_pem_file(file)
     guardian = Application.fetch_env!(:guardian, Guardian)
     Application.put_env(:guardian, Guardian,

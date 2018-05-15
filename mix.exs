@@ -25,11 +25,10 @@ defmodule Kastlex.Mixfile do
   end
 
   def application do
-    [mod: {Kastlex, []},
-     applications: [:logger, :brod, :phoenix, :phoenix_pubsub, :phoenix_html, :cowboy,
-                    :gettext, :yamerl, :yaml_elixir, :comeonin,
-                    :guardian, :ssl, :logger_file_backend,
-                    :runtime_tools, :recon]]
+    [
+      mod: {Kastlex, []},
+      extra_applications: [:logger, :runtime_tools]
+    ]
   end
 
   # Specifies which paths to compile per environment.
@@ -37,24 +36,24 @@ defmodule Kastlex.Mixfile do
   defp elixirc_paths(_),     do: ["lib", "web"]
 
   defp deps do
-    [{:phoenix, "~> 1.3"},
-     {:phoenix_pubsub, "~> 1.0"},
-     {:phoenix_live_reload, "~> 1.0", only: :dev},
-     {:mock, "~> 0.2", only: :test},
-     {:briefly, "~> 0.3", only: :test},
-     {:logger_file_backend, "0.0.9"},
-     {:observer_cli, "~> 1.0.8"},
-     {:recon, "~> 2.3.2"},
-     {:gettext, "~> 0.13"},
-     {:phoenix_html, "~> 2.8.0"},
-     {:cowboy, "~> 1.1"},
-     {:yaml_elixir, "~> 2.1"},
-     {:brod, "~> 3.7"},
-     {:kafka_protocol, "~> 2.2", override: true},
-     {:distillery, "~> 2.0"},
-     {:guardian, "~> 0.14.5"},
-     {:erlzk, "~> 0.6.3"},
-     {:comeonin, "~> 2.6"},
+    [
+      {:phoenix, "~> 1.3.4"},
+      {:phoenix_pubsub, "~> 1.0"},
+      {:phoenix_html, "~> 2.10"},
+      {:phoenix_live_reload, "~> 1.0", only: :dev},
+      {:gettext, "~> 0.11"},
+      {:cowboy, "~> 1.0"},
+      {:mock, "~> 0.3.2", only: :test},
+      {:briefly, "~> 0.3.0", only: :test},
+      {:logger_file_backend, "0.0.10"},
+      {:observer_cli, "~> 1.3.4"},
+      {:recon, "~> 2.3.6"},
+      {:yaml_elixir, "~> 2.1.0"},
+      {:brod, "~> 3.7.1"},
+      {:distillery, "~> 2.0.10"},
+      {:guardian, "~> 0.14.0"},
+      {:comeonin, "~> 4.1.1"},
+      {:bcrypt_elixir, "~> 1.0"}
     ]
   end
 

@@ -52,24 +52,21 @@ defmodule Kastlex.MetadataCache do
     partitions
   end
 
-  def start_link(options) do
-    GenServer.start_link(__MODULE__, options, [name: @server])
+  def start_link() do
+    GenServer.start_link(__MODULE__, [], [name: @server])
   end
 
-  def init(_options) do
+  def init(_) do
     :ets.new(@table, [:set, :protected, :named_table])
     :ets.insert(@table, {:ts, :erlang.system_time()})
     :ets.insert(@table, {:brokers, []})
     :ets.insert(@table, {:topics, []})
     :ets.new(@leaders_table, [:set, :protected, :named_table])
+    do_refresh()
     env = Application.get_env(:kastlex, __MODULE__)
     refresh_timeout_ms = env[:refresh_timeout_ms]
-    state = %{refresh_timeout_ms: refresh_timeout_ms,
-              meta_checksum: nil,
-             }
-    do_refresh(state)
-    :erlang.send_after(state.refresh_timeout_ms, Kernel.self(), @refresh)
-    {:ok, state}
+    :erlang.send_after(refresh_timeout_ms, Kernel.self(), @refresh)
+    {:ok, %{refresh_timeout_ms: refresh_timeout_ms}}
   end
 
   def handle_call(@sync, _, state) do
@@ -77,7 +74,7 @@ defmodule Kastlex.MetadataCache do
   end
 
   def handle_info(@refresh, state) do
-    state = do_refresh(state)
+    do_refresh()
     :erlang.send_after(state.refresh_timeout_ms, Kernel.self(), @refresh)
     {:noreply, state}
   end
@@ -91,28 +88,21 @@ defmodule Kastlex.MetadataCache do
     Logger.info "#{inspect Kernel.self} is terminating: #{inspect reason}"
   end
 
-  defp do_refresh(state) do
+  defp do_refresh() do
+    Logger.info "refreshing metadata"
     case :brod_client.get_metadata(Kastlex.get_brod_client_id(), :all) do
       {:ok, meta} ->
         :ets.insert(@table, {:ts, :erlang.system_time()})
-        new_checksum = :erlang.phash2(meta)
-        case new_checksum === state.meta_checksum do
-          true ->
-            # metadata is the same as last time, no need to spend CPU cycles
-            state
-          false ->
-            # convert kewords to maps
-            brokers = Enum.map(meta[:brokers], &Map.new/1)
-            :ets.insert(@table, {:brokers, brokers})
-            # init leader_partitions
-            leader_partitions = Map.new(Enum.map(brokers, fn(broker) -> {broker.node_id, %{}} end))
-            {topics, leader_partitions} = Enum.map_reduce(meta[:topic_metadata],
-              leader_partitions,
-              &map_topic_meta/2)
-            :ets.insert(@table, {:topics, topics})
-            :ets.insert(@leaders_table, Map.to_list(leader_partitions))
-            %{state | meta_checksum: new_checksum}
-        end
+        # convert kewords to maps
+        brokers = Enum.map(meta[:brokers], &Map.new/1)
+        :ets.insert(@table, {:brokers, brokers})
+        # init leader_partitions
+        leader_partitions = Map.new(Enum.map(brokers, fn(broker) -> {broker.node_id, %{}} end))
+        {topics, leader_partitions} = Enum.map_reduce(meta[:topic_metadata],
+          leader_partitions,
+          &map_topic_meta/2)
+        :ets.insert(@table, {:topics, topics})
+        :ets.insert(@leaders_table, Map.to_list(leader_partitions))
       {:error, reason} ->
         Logger.error "Error fetching metadata: #{inspect reason}"
     end
@@ -122,7 +112,7 @@ defmodule Kastlex.MetadataCache do
     topic = tm[:topic]
     map_partition_meta = fn(pm, lps) ->
       leader = pm[:leader]
-      partition = pm[:partition_id]
+      partition = pm[:partition]
       p = %{isr: Enum.sort(pm[:isr]),
             leader: leader,
             partition: partition,

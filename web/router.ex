@@ -65,6 +65,8 @@ defmodule Kastlex.Router do
     post "/messages/:topic/:partition", MessageController, :produce
     get  "/messages/:topic/:partition", MessageController, :fetch
     get  "/messages/:topic/:partition/:offset", MessageController, :fetch
+    get  "/consumers", ConsumerController, :list_groups
+    get  "/consumers/:group_id", ConsumerController, :show_group
   end
 
   def handle_errors(conn, data) do

@@ -23,8 +23,8 @@ config :kastlex, Kastlex.TokenStorage,
 
 # Configures Elixir's Logger
 config :logger, :console,
-  format: "$time [$level] $metadata$message\n",
-  metadata: [:request_id, :remote_ip],
+  format: "$time [$level] $message $metadata\n",
+  metadata: [:request_id, :remote_ip, :module, :function, :line],
   handle_otp_reports: true,
   handle_sasl_reports: true
 
@@ -45,7 +45,7 @@ config :guardian, Guardian,
   issuer: "Kastlex",
   ttl: { 30, :days },
   verify_issuer: true,
-  secret_key: "_AbBL082GKlPjoY9o-KM78PhyALavJRtZXOW7D-ZyqE",
+  secret_key_file: "priv/jwk.pem",
   serializer: Kastlex.GuardianSerializer
 
 # Import environment specific config. This must remain at the bottom

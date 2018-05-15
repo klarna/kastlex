@@ -12,12 +12,21 @@ To start with an interactive shell:
 
     iex --sname kastlex -S mix phx.server
 
+To start an interactive shell with all applications paths loaded but not starting any application
+
+    iex -S mix shell
+
 By default KastleX will try to connect to kafka at localhost:9092 and to zookeeper on localhost:2181.
 
 Default app port is 8092.
 
 ## Tests
 
+    docker-compose -f docker-compose-test.yml up -d
+    # give it ~10 seconds
+    # force create __consumer_offsets
+    docker exec -it kafka /opt/kafka/bin/kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic kastlex
+    # Ctrl+C to terminate consumer process
     mix test
 
 KastleX expects to find kafka:9092 and zookeeper:2181 on localhost.
