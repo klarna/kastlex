@@ -10,9 +10,9 @@ defmodule Kastlex.CgCache do
   ## return all (active/inactive consumer groups)
   def get_groups() do
     ## return all active consumer groups
-    cg_keys = :dets.select(@cgs, [{{:"$1", :"_"}, [], [:"$1"]}]) |> :gb_sets.from_list
+    cg_keys = :dets.select(@cgs, [{{:"$1", :_}, [], [:"$1"]}]) |> :gb_sets.from_list
     ## return also inactive consumer groups (when committed offsets are found)
-    offset_keys = :dets.select(@offsets, [{{:"$1", :"_"}, [], [:"$1"]}]) |> :gb_sets.from_list
+    offset_keys = :dets.select(@offsets, [{{:"$1", :_}, [], [:"$1"]}]) |> :gb_sets.from_list
     :gb_sets.union(cg_keys, offset_keys) |> :gb_sets.to_list
   end
 

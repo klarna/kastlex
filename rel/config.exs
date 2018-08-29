@@ -16,13 +16,13 @@ use Mix.Releases.Config,
 environment :dev do
   set dev_mode: true
   set include_erts: false
-  set cookie: :"kastlex"
+  set cookie: :kastlex
 end
 
 environment :prod do
   set include_erts: true
   set include_src: false
-  set cookie: :"kastlex"
+  set cookie: :kastlex
   set vm_args: "rel/vm.args"
 end
 
