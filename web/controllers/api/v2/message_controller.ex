@@ -68,7 +68,7 @@ defmodule Kastlex.API.V2.MessageController do
   end
 
   def fetch(%{assigns: %{type: type}} = conn, params) do
-    case Kastlex.API.Common.fetch(type, params) do
+    case Kastlex.KafkaUtils.fetch(type, params) do
       {:ok, resp} ->
         respond(conn, resp, type)
       {:error, :unknown_topic_or_partition} ->

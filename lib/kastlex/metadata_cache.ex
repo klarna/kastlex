@@ -98,7 +98,7 @@ defmodule Kastlex.MetadataCache do
   end
 
   defp do_refresh(state) do
-    case :brod_client.get_metadata(Kastlex.get_brod_client_id(), :undefined) do
+    case :brod_client.get_metadata(Kastlex.get_brod_client_id(), :all) do
       {:ok, meta} ->
         :ets.insert(@table, {:ts, :erlang.system_time()})
         brokers = meta[:brokers] |> Enum.map(fn(x) ->

@@ -30,7 +30,7 @@ defmodule Kastlex.API.V1.MessageController do
   end
 
   def fetch(%{assigns: %{type: type}} = conn, params) do
-    case Kastlex.API.Common.fetch(type, params) do
+    case Kastlex.KafkaUtils.fetch(type, params) do
       {:ok, %{messages: messages,
               high_watermark: hw_offset}} ->
         data = %{errorCode: :no_error, # compatibility

@@ -9,7 +9,7 @@
 * 1.6.0
   - Upgrad to elixir 1.7
   - Upgrad to brod 3.7
-  - Error codes changed (per change in kafka spec and convention), e.g:
+  - Error codes changed (per change in kafka spec and convention) from CamelCase to snake_case, e.g:
       * UnknownTopicOrPartition -> unknown_topic_or_partition
       * LeaderNotAvailable -> leader_not_available
   - Message files `crc`, `attributes` and `magic_byte` are deleted from JSON fetch response
@@ -19,4 +19,5 @@
   - Deleted 'latest' as 'last' logic from fetch APIs
     introduced logical offset 'last' instead.
     NOTE: in case the partition is empty, fetching 'last' will result in error
+  - Fixed offset controller error codes
 
