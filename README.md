@@ -64,14 +64,15 @@ API v1
     GET /api/v1/messages/:topic/:partition
     GET /api/v1/messages/:topic/:partition/:offset
     {
-      "size": 29,
+      "size": nil,
       "messages": [
         {
           "value": "foo",
-          "size": 17,
           "offset": 20,
           "key": null,
-          "crc": -91546804
+          "ts_type": null,
+          "ts": null,
+          "headers": []
         }
       ],
       "highWmOffset": 21,
@@ -88,10 +89,8 @@ API v2
         "ts_type": null,
         "ts": null,
         "offset": 312,
-        "magic_byte": 0,
         "key": null,
-        "crc": 1495943047,
-        "attributes": 0
+        "headers": []
       }
     ]
 
