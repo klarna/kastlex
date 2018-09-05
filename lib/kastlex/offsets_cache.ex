@@ -33,11 +33,13 @@ defmodule Kastlex.OffsetsCache do
     env = Application.get_env(:kastlex, __MODULE__, [])
     refresh_timeout_ms = Keyword.get(env, :refresh_offsets_timeout_ms, @default_refresh_timeout_ms)
     :erlang.send_after(0, Kernel.self(), @refresh)
-    {:ok, %{refresh_timeout_ms: refresh_timeout_ms}}
+    client_config = Kastlex.get_brod_client_config(_logconfg = false)
+    {:ok, %{refresh_timeout_ms: refresh_timeout_ms,
+            client_config: client_config}}
   end
 
-  def handle_info(@refresh, state) do
-    Kastlex.MetadataCache.partitions_by_leader() |> Enum.each(&refresh_leader_offsets/1)
+  def handle_info(@refresh, %{client_config: client_config} = state) do
+    Kastlex.MetadataCache.partitions_by_leader() |> Enum.each(fn(x) -> refresh_leader_offsets(client_config, x) end)
     :erlang.send_after(state.refresh_timeout_ms, Kernel.self(), @refresh)
     {:noreply, state}
   end
@@ -51,17 +53,17 @@ defmodule Kastlex.OffsetsCache do
     Logger.info "#{inspect Kernel.self} is terminating: #{inspect reason}"
   end
 
-  def refresh_leader_offsets({id, topics}) do
+  def refresh_leader_offsets(client_config, {id, topics}) do
     leader = Kastlex.MetadataCache.get_brokers |> Enum.find(fn(x) -> x.id == id end)
     case leader do
       nil ->
         Logger.error("Error refresing offsets for node #{id}: not found in broker metadata")
       _ ->
-        refresh_leader_offsets(leader, topics)
+        refresh_leader_offsets(client_config, leader, topics)
     end
   end
 
-  def refresh_leader_offsets(leader, topics) do
+  def refresh_leader_offsets(client_config, leader, topics) do
     topics = Enum.reduce(topics, [],
                          fn({t, partitions}, acc) ->
                            partition_fields = Enum.reduce(partitions, [],
@@ -74,7 +76,6 @@ defmodule Kastlex.OffsetsCache do
                          end)
     request_fields = [replica_id: -1, topics: topics]
     request = :kpro.make_request(:list_offsets, 0, request_fields)
-    client_config = Kastlex.get_brod_client_config()
     endpoints = [{String.to_charlist(leader.host), leader.port}]
     do_fun = fn(connection) ->
       {:ok, response} = :kpro.request_sync(connection, request, 10_000)

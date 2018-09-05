@@ -143,7 +143,11 @@ defmodule Kastlex do
                         Keyword.put(guardian, :ttl, {ttl, :seconds}))
   end
 
-  def get_brod_client_config() do
+  def get_brod_client_config(maybe_log \\ true) do
+    log = case maybe_log do
+      true -> fn(x) -> Logger.info(x) end
+      false -> fn(_) -> :ok end
+    end
     ssl_config =
     []
       |> maybe_put(:cacertfile, system_env("KASTLEX_KAFKA_CACERTFILE"))
@@ -154,9 +158,6 @@ defmodule Kastlex do
             [] -> system_env("KASTLEX_KAFKA_USE_SSL", false, &s2b/1)
             kw -> kw
           end
-
-    sasl = get_brod_sasl_config(system_env("KASTLEX_KAFKA_SASL_FILE"))
-
     producer_config =
     []
       |> maybe_put(:required_acks, system_env("KASTLEX_PRODUCER_REQUIRED_ACKS", nil, &s2i/1))
@@ -169,13 +170,15 @@ defmodule Kastlex do
       |> maybe_put(:max_linger_ms, system_env("KASTLEX_PRODUCER_MAX_LINGER_MS", nil, &s2i/1))
       |> maybe_put(:max_linger_count, system_env("KASTLEX_PRODUCER_MAX_LINGER_COUNT", nil, &s2i/1))
 
-    Logger.info "brod producer config: #{inspect producer_config}"
-    Logger.info "brod ssl config: #{inspect ssl}"
+    log.("brod producer config: #{inspect producer_config}")
+    log.("brod ssl config: #{inspect ssl}")
+
+    sasl = get_brod_sasl_config(system_env("KASTLEX_KAFKA_SASL_FILE"))
     case sasl do
-      {:plain, username, _password} ->
-        Logger.info "brod sasl username: #{username}"
+      {mechanism, username, _password} ->
+        log.("sasl #{mechanism} username: #{username}")
       _ ->
-        Logger.info "not using sasl auth"
+        log.("not using sasl auth")
     end
 
     [allow_topic_auto_creation: false,
@@ -188,11 +191,12 @@ defmodule Kastlex do
   # Example file format (yaml):
   # username: "foo",
   # password: "bar"
+  # mechanism: "plain" # or scram_sha_256 or scram_sha_512
   defp get_brod_sasl_config(nil), do: :undefined
   defp get_brod_sasl_config(file) do
     try do
-      config = YamlElixir.read_from_file(file)
-      {:plain, String.to_charlist(config["username"]), String.to_charlist(config["password"])}
+      {:ok, config} = YamlElixir.read_from_file(file)
+      {sasl_mechanism(config), config["username"], config["password"]}
     rescue
       e in RuntimeError ->
         Logger.error("Error loading sasl config file: " <> e.message)
@@ -200,6 +204,16 @@ defmodule Kastlex do
     catch
       _code, value ->
         Logger.error("Error loading sasl config file: #{inspect value}")
+        :undefined
+    end
+  end
+
+  defp sasl_mechanism(config) do
+    case config["mechanism"] do
+      nil             -> :plain
+      "plain"         -> :plain
+      "scram_sha_256" -> :scram_sha_256
+      "scram_sha_512" -> :scram_sha_512
     end
   end
 

@@ -66,11 +66,11 @@ defmodule KastlexTest do
     end
   end
 
-  test "get_brod_client_config producer config sasl" do
+  test "get_brod_client_config producer config sasl default to plain" do
     f1 = fn("KASTLEX_KAFKA_SASL_FILE") -> "foobar.yaml"
            (_) -> nil
     end
-    f2 = fn("foobar.yaml") -> %{"username" => "foo", "password" => "bar"}
+    f2 = fn("foobar.yaml") -> {:ok, %{"username" => "foo", "password" => "bar"}}
            (_) -> nil
     end
     with_mocks [{System, [:passthrough], [get_env: f1]},
@@ -79,7 +79,26 @@ defmodule KastlexTest do
                   auto_start_producers: true,
                   default_producer_config: [],
                   ssl: false,
-                  sasl: {:plain, 'foo', 'bar'}
+                  sasl: {:plain, "foo", "bar"}
+                 ]
+      assert expected == Kastlex.get_brod_client_config
+    end
+  end
+
+  test "get_brod_client_config producer config sasl scram" do
+    f1 = fn("KASTLEX_KAFKA_SASL_FILE") -> "foobar.yaml"
+           (_) -> nil
+    end
+    f2 = fn("foobar.yaml") -> {:ok, %{"username" => "foo", "password" => "bar", "mechanism" => "scram_sha_256"}}
+           (_) -> nil
+    end
+    with_mocks [{System, [:passthrough], [get_env: f1]},
+                {YamlElixir, [:passthrough], [read_from_file: f2]}] do
+      expected = [allow_topic_auto_creation: false,
+                  auto_start_producers: true,
+                  default_producer_config: [],
+                  ssl: false,
+                  sasl: {:scram_sha_256, "foo", "bar"}
                  ]
       assert expected == Kastlex.get_brod_client_config
     end
