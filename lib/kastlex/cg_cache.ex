@@ -21,7 +21,7 @@ defmodule Kastlex.CgCache do
       lookup(@offsets, group_id, %{}) |>
       Enum.map(fn({{topic, partition}, details}) ->
                  details = maybe_fix_brod_commits(details)
-                 offset = Keyword.fetch!(details, :offset)
+                 offset = fetch!(details, :offset)
                  [ {:topic, topic},
                    {:partition, partition},
                    {:lagging, get_lagging(topic, partition, offset)}
@@ -35,8 +35,8 @@ defmodule Kastlex.CgCache do
          }
       value ->
         to_maps([{:status, value}]) |>
-        Map.put(:group_id, group_id) |>
-        Map.put(:offsets, committed_offsets)
+        put(:group_id, group_id) |>
+        put(:offsets, committed_offsets)
     end
   end
 
@@ -46,7 +46,7 @@ defmodule Kastlex.CgCache do
     |> Enum.flat_map(fn({group_id, topics}) ->
       topics
       |> Enum.map(fn({{topic, partition}, details}) ->
-        offset =  Keyword.fetch!(details, :offset)
+        offset =  fetch!(details, :offset)
         %{group_id: group_id, topic: topic, partition: partition, offset: offset}
       end)
     end)
@@ -57,8 +57,8 @@ defmodule Kastlex.CgCache do
     map_key = {key[:topic], key[:partition]}
     group = lookup(@offsets, ets_key, %{})
     group = case value do
-              [] -> Map.delete(group, map_key)
-              _  -> Map.put(group, map_key, value)
+              [] -> delete(group, map_key)
+              _  -> put(group, map_key, value)
             end
     case group === %{} do
       :true  -> :dets.delete(@offsets, group_id)
@@ -125,6 +125,15 @@ defmodule Kastlex.CgCache do
     end
   end
 
+  defp delete(x, key) when is_map(x), do: Map.delete(x, key)
+  defp delete(x, key) when is_list(x), do: Keyword.delete(x, key)
+
+  defp fetch!(x, key) when is_map(x), do: Map.fetch!(x, key)
+  defp fetch!(x, key) when is_list(x), do: Keyword.fetch!(x, key)
+
+  defp put(x, key, val) when is_map(x), do: Map.put(x, key, val)
+  defp put(x, key, val) when is_list(x), do: Keyword.put(x, key, val)
+
   defp to_maps({k, [x | _] = v}) when is_list(x), do: {k, :lists.map(&to_maps/1, v)}
   defp to_maps({k, [x | _] = v}) when is_tuple(x), do: {k, Map.new(v, &to_maps/1)}
   defp to_maps([{_, _} | _] = x), do: Map.new(:lists.map(&to_maps/1, x))
@@ -162,11 +171,11 @@ defmodule Kastlex.CgCache do
   # This correction is necessary because otherwise KastleX will report
   # lagging = 1 for brod < 3.3.4 when lagging is actually 0
   defp maybe_fix_brod_commits(details) do
-    metadata = Keyword.fetch!(details, :metadata)
+    metadata = fetch!(details, :metadata)
     case is_brod_roundrobin_v1_commit(metadata) do
       true ->
-        offset = Keyword.fetch!(details, :offset)
-        Keyword.put(details, :offset, offset + 1)
+        offset = fetch!(details, :offset)
+        put(details, :offset, offset + 1)
       false ->
         details
     end

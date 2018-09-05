@@ -1,40 +1,73 @@
 #!/bin/bash -e
 
-THIS_DIR="$(cd "$(dirname "$0")" && pwd)"
+KAFKA_VERSION="${1:-1.1}"
+IMAGE="zmstone/kafka:${KAFKA_VERSION}"
+sudo docker pull $IMAGE
 
-BROD_VSN="$(cat $THIS_DIR/mix.lock | grep -oE ":brod,\s*\"[0-9]\.[0-9]+\.[0-9]+\"" | awk '{print $2}' | tr -d '"')"
-BROD_DOWNLOAD_DIR="$THIS_DIR/brod-$BROD_VSN"
+ZK='zookeeper'
+KAFKA_1='kafka-1'
+CONTAINERS="$ZK $KAFKA_1"
 
-if ! [ -d BROD_DOWNLOAD_DIR ]; then
-  wget -O brod.zip https://github.com/klarna/brod/archive/$BROD_VSN.zip -o brod.zip
-  unzip -qo brod.zip || true
-fi
-pushd .
-cd "$BROD_DOWNLOAD_DIR/docker"
+# kill running containers
+for i in $CONTAINERS; do sudo docker rm -f $i > /dev/null 2>&1 || true; done
 
-## maybe rebuild
-sudo docker-compose -f docker-compose-basic.yml build
+sudo docker run -d \
+                -p 2181:2181 \
+                --name $ZK \
+                $IMAGE run zookeeper
 
-## stop everything first
-sudo docker-compose -f docker-compose-kafka-1.yml down || true
-
-## start the cluster
-sudo docker-compose -f docker-compose-kafka-1.yml up -d
-
-## wait 4 secons for kafka to be ready
 n=0
-while [ "$(sudo docker exec kafka_1 bash -c '/opt/kafka/bin/kafka-topics.sh --zookeeper zookeeper --list')" != '' ]; do
+while [ "$(</dev/tcp/localhost/2181 2>/dev/null && echo OK || echo NOK)" = "NOK" ]; do
   if [ $n -gt 4 ]; then
-    echo "timedout waiting for kafka"
+    echo "timeout waiting for $ZK"
     exit 1
   fi
   n=$(( n + 1 ))
   sleep 1
 done
 
-## loop
-sudo docker exec kafka_1 bash -c "/opt/kafka/bin/kafka-topics.sh --zookeeper zookeeper --create --partitions 1 --replication-factor 1 --topic kastlex"
-sudo docker exec kafka_1 bash -c "/opt/kafka/bin/kafka-topics.sh --zookeeper zookeeper --create --partitions 1 --replication-factor 1 --topic _kastlex_tokens --config cleanup.policy=compact"
-sudo docker exec kafka_1 bash -c "/opt/kafka/bin/kafka-topics.sh --zookeeper zookeeper --create --partitions 3 --replication-factor 1 --topic test-topic"
-popd
+sudo docker run -d \
+                -e BROKER_ID=0 \
+                -e PLAINTEXT_PORT=9092 \
+                -e SSL_PORT=9093 \
+                -e SASL_SSL_PORT=9094 \
+                -e SASL_PLAINTEXT_PORT=9095 \
+                -p 9092-9095:9092-9095 \
+                --link $ZK \
+                --name $KAFKA_1 \
+                $IMAGE run kafka
+
+n=0
+while [ "$(sudo docker exec $KAFKA_1 bash -c '/opt/kafka/bin/kafka-topics.sh --zookeeper zookeeper --describe')" != '' ]; do
+  if [ $n -gt 4 ]; then
+    echo "timeout waiting for $KAFKA_1"
+    exit 1
+  fi
+  n=$(( n + 1 ))
+  sleep 1
+done
+
+create_topic() {
+  TOPIC_NAME="$1"
+  shift
+  if [ ! -z "$1" ]; then
+    PARTITIONS="$1"
+    shift
+  else
+    PARTITIONS=1
+  fi
+  CMD="/opt/kafka/bin/kafka-topics.sh --zookeeper zookeeper --create --partitions $PARTITIONS --replication-factor 1 --topic $TOPIC_NAME $@"
+  sudo docker exec $KAFKA_1 bash -c "$CMD"
+}
+
+create_topic _try_to_create_ignore_failure || true
+create_topic test-topic
+create_topic kastlex
+create_topic _kastlex_tokens 2 1 --config cleanup.policy=compact
+
+# this is to warm-up kafka group coordinator
+sudo docker exec $KAFKA_1 /opt/kafka/bin/kafka-consumer-groups.sh --bootstrap-server localhost:9092 --new-consumer --group test-group --describe > /dev/null 2>&1
+
+# add scram SASL user/pass
+sudo docker exec $KAFKA_1 /opt/kafka/bin/kafka-configs.sh --zookeeper zookeeper:2181 --alter --add-config 'SCRAM-SHA-256=[iterations=8192,password=ecila],SCRAM-SHA-512=[password=ecila]' --entity-type users --entity-name alice
 

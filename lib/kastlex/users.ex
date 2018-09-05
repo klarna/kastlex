@@ -55,22 +55,22 @@ defmodule Kastlex.Users do
     permissions_file_path = Application.fetch_env!(:kastlex, :permissions_file_path)
     Logger.info "Reloading permissions from #{permissions_file_path}"
     permissions = permissions_file_path
-    |> YamlElixir.read_from_file
-    |> validate_permissions
+                  |> YamlElixir.read_from_file
+                  |> validate_permissions
     passwd_file_path = Application.fetch_env!(:kastlex, :passwd_file_path)
     Logger.info "Reloading credentials from #{passwd_file_path}"
     passwd = passwd_file_path
-    |> YamlElixir.read_from_file
-    |> validate_passwd
+             |> YamlElixir.read_from_file
+             |> validate_passwd
     users = Map.merge(permissions, passwd, fn(_k, v1, v2) -> Map.merge(v1, v2) end) |>
       Enum.map(fn({k,v}) -> {k, map_keys_to_atoms(v) |> Keyword.put(:name, k)} end)
     :ets.delete_all_objects(@table)
     :ets.insert(@table, users)
   end
 
-  defp validate_permissions(permissions), do: permissions
+  defp validate_permissions({:ok, permissions}), do: permissions
 
-  defp validate_passwd(passwd), do: passwd
+  defp validate_passwd({:ok, passwd}), do: passwd
 
   defp map_keys_to_atoms(m) do
     Enum.map(m, fn({k,v}) -> {:erlang.binary_to_atom(k, :latin1), v} end)

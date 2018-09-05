@@ -33,7 +33,7 @@ defmodule Kastlex.API.V1.MessageController do
     case Kastlex.KafkaUtils.fetch(type, params) do
       {:ok, %{messages: messages,
               high_watermark: hw_offset}} ->
-        data = %{errorCode: :no_error, # compatibility
+        data = %{error_code: :no_error, # compatibility
                  size: nil, # compatibility
                  highWmOffset: hw_offset,
                  messages: messages}

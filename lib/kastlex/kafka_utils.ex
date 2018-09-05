@@ -9,7 +9,7 @@ defmodule Kastlex.KafkaUtils do
     case {resolve_offset(pid, t, p, "earliest"),
           resolve_offset(pid, t, p, "latest")} do
       {{:ok, e}, {:ok, l}} when l > e ->
-        l - 1;
+        {:ok, l - 1};
       {{:ok, e}, {:ok, e}} ->
         {:error, "partition is empty"}
       {{:error, reason}, _} ->
@@ -18,11 +18,11 @@ defmodule Kastlex.KafkaUtils do
         {:error, reason}
     end
   end
-  def resolve_offset(pid, t, p, "latest") do
-    :brod_utils.resolve_offset(pid, t, p, :latest)
-  end
   def resolve_offset(pid, t, p, "earliest") do
     :brod_utils.resolve_offset(pid, t, p, :earliest)
+  end
+  def resolve_offset(pid, t, p, "latest") do
+    :brod_utils.resolve_offset(pid, t, p, :latest)
   end
   def resolve_offset(pid, t, p, offset) do
     case Integer.parse(offset) do
@@ -34,7 +34,7 @@ defmodule Kastlex.KafkaUtils do
   def fetch(type, params) do
     topic = params["topic"]
     {partition, _} = Integer.parse(params["partition"])
-    orig_offset = Map.get(params, "offset", "latest")
+    orig_offset = Map.get(params, "offset", "last")
     try do
       pid = get_leader_connection(topic, partition)
       case resolve_offset(pid, topic, partition, orig_offset) do
@@ -48,8 +48,8 @@ defmodule Kastlex.KafkaUtils do
           :brod.fetch(pid, topic, partition, offset, fetch_opts)
           |> handle_fetch_response(type)
         error ->
-          Logger.error "Failed to resolve offset for topic #{topic}-#{partition} #{orig_offset}: #{inspect error}"
-          {:error, %{error: "Cannot resolve logical offset #{orig_offset}"}}
+          Logger.error "Failed to resolve offset for topic #{topic}-#{partition} #{inspect orig_offset}: #{inspect error}"
+          {:error, "Cannot resolve logical offset #{orig_offset}"}
       end
     catch
       :throw, reason ->
@@ -83,8 +83,8 @@ defmodule Kastlex.KafkaUtils do
          }
       "binary" ->
         message = messages |> hd |> transform_kafka_message
-        %{headers: message |> kafka_message(:headers) |> to_json,
-          payload: message |> kafka_message(:value),
+        %{headers: message.headers |> to_json,
+          payload: message.value,
           high_watermark: hw_offset
          }
     end

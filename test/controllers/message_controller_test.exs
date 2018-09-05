@@ -24,7 +24,7 @@ defmodule Kastlex.MessageControllerTest do
     Application.put_env(:kastlex, :permissions_file_path, path)
     Kastlex.Users.reload
     # ensure we have a message to test on
-    :brod.produce_sync(Kastlex.get_brod_client_id(), topic, partition, "", "test")
+    :brod.produce_sync(Kastlex.get_brod_client_id(), topic, partition, "", "test-data")
     {:ok, %{:topic => topic, :partition => partition}}
   end
 
@@ -45,7 +45,6 @@ defmodule Kastlex.MessageControllerTest do
     assert Map.has_key?(msg, "key")
     assert Map.has_key?(msg, "value")
     assert Map.has_key?(msg, "offset")
-    assert Map.has_key?(msg, "crc")
   end
 
   test "show chosen resource v2", params do
@@ -101,7 +100,7 @@ defmodule Kastlex.MessageControllerTest do
     |> get(api_v1_message_path(build_conn(), :fetch, params[:topic], params[:partition]))
     |> response(200)
 
-    assert response == "test"
+    assert response == "test-data"
   end
 
   test "does not show resource when permissions are not set", params do
@@ -151,7 +150,7 @@ defmodule Kastlex.MessageControllerTest do
     build_conn()
     |> put_req_header("content-type", "application/binary")
     |> put_req_header("authorization", "Bearer #{token}")
-    |> post(api_v1_message_path(build_conn(), :produce, params[:topic]), "test")
+    |> post(api_v1_message_path(build_conn(), :produce, params[:topic]), "test-data")
     |> response(204)
 
   end
@@ -159,7 +158,7 @@ defmodule Kastlex.MessageControllerTest do
   test "does not create resource when permissions are not set (content type binary)", params do
     build_conn()
     |> put_req_header("content-type", "application/binary")
-    |> post(api_v1_message_path(build_conn(), :produce, params[:topic]), "test")
+    |> post(api_v1_message_path(build_conn(), :produce, params[:topic]), "test-data")
     |> response(403)
   end
 
@@ -168,7 +167,7 @@ defmodule Kastlex.MessageControllerTest do
     build_conn()
     |> put_req_header("content-type", "application/binary")
     |> put_req_header("authorization", "Bearer #{token}")
-    |> post(api_v1_message_path(build_conn(), :produce, params[:topic]), "test")
+    |> post(api_v1_message_path(build_conn(), :produce, params[:topic]), "test-data")
     |> response(403)
   end
 
@@ -177,7 +176,7 @@ defmodule Kastlex.MessageControllerTest do
     build_conn()
     |> put_req_header("content-type", "application/binary")
     |> put_req_header("authorization", "Bearer #{token}")
-    |> post(api_v1_message_path(build_conn(), :produce, params[:topic]), "test")
+    |> post(api_v1_message_path(build_conn(), :produce, params[:topic]), "test-data")
     |> response(403)
   end
 
@@ -186,7 +185,7 @@ defmodule Kastlex.MessageControllerTest do
     build_conn()
     |> put_req_header("content-type", "application/binary")
     |> put_req_header("authorization", "Bearer #{token}")
-    |> post(api_v1_message_path(build_conn(), :produce, "not_exist"), "test")
+    |> post(api_v1_message_path(build_conn(), :produce, "not_exist"), "test-data")
     |> response(404)
   end
   
@@ -195,7 +194,7 @@ defmodule Kastlex.MessageControllerTest do
     build_conn()
     |> put_req_header("content-type", "application/json")
     |> put_req_header("authorization", "Bearer #{token}")
-    |> post(api_v1_message_path(build_conn(), :produce, params[:topic]), "test")
+    |> post(api_v1_message_path(build_conn(), :produce, params[:topic]), "test-data")
     |> response(204)
 
   end
@@ -203,7 +202,7 @@ defmodule Kastlex.MessageControllerTest do
   test "does not create resource when permissions are not set (content type json)", params do
     build_conn()
     |> put_req_header("content-type", "application/json")
-    |> post(api_v1_message_path(build_conn(), :produce, params[:topic]), "test")
+    |> post(api_v1_message_path(build_conn(), :produce, params[:topic]), "test-data")
     |> response(403)
   end
 
@@ -212,7 +211,7 @@ defmodule Kastlex.MessageControllerTest do
     build_conn()
     |> put_req_header("content-type", "application/json")
     |> put_req_header("authorization", "Bearer #{token}")
-    |> post(api_v1_message_path(build_conn(), :produce, params[:topic]), "test")
+    |> post(api_v1_message_path(build_conn(), :produce, params[:topic]), "test-data")
     |> response(403)
   end
 
@@ -221,7 +220,7 @@ defmodule Kastlex.MessageControllerTest do
     build_conn()
     |> put_req_header("content-type", "application/json")
     |> put_req_header("authorization", "Bearer #{token}")
-    |> post(api_v1_message_path(build_conn(), :produce, params[:topic]), "test")
+    |> post(api_v1_message_path(build_conn(), :produce, params[:topic]), "test-data")
     |> response(403)
   end
 
@@ -230,7 +229,7 @@ defmodule Kastlex.MessageControllerTest do
     build_conn()
     |> put_req_header("content-type", "application/json")
     |> put_req_header("authorization", "Bearer #{token}")
-    |> post(api_v1_message_path(build_conn(), :produce, "not_exist"), "test")
+    |> post(api_v1_message_path(build_conn(), :produce, "not_exist"), "test-data")
     |> response(404)
   end
 end
