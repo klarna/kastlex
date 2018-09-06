@@ -59,48 +59,68 @@ cURL example (-d implies POST):
     curl -s -i -H "Content-Type: application/binary" localhost:8092/api/v1/messages/foo -d bar
 
 ## Fetch messages
-API v1
 
-    GET /api/v1/messages/:topic/:partition
-    GET /api/v1/messages/:topic/:partition/:offset
+### v1
+
+GET /api/v1/messages/:topic/:partition
+GET /api/v1/messages/:topic/:partition/:offset
+
+Body
+
+```
+{
+  "size": null,
+  "messages": [
     {
-      "size": nil,
-      "messages": [
-        {
-          "value": "foo",
-          "offset": 20,
-          "key": null,
-          "ts_type": null,
-          "ts": null,
-          "headers": []
-        }
-      ],
-      "highWmOffset": 21,
-      "errorCode": "no_error"
+      "value": "test-data",
+      "ts_type": "create",
+      "ts": 1536157879011,
+      "offset": 45,
+      "key": null,
+      "headers": {}
     }
+  ],
+  "highWmOffset": 46,
+  "error_code": "no_error"
+}
+```
 
-API v2
+### v2
 
-    GET /api/v2/messages/:topic/:partition
-    GET /api/v2/messages/:topic/:partition/:offset
-    [
-      {
-        "value": "test",
-        "ts_type": null,
-        "ts": null,
-        "offset": 312,
-        "key": null,
-        "headers": []
-      }
-    ]
+GET /api/v2/messages/:topic/:partition
+GET /api/v2/messages/:topic/:partition/:offset
+
+Header
+```
+x-high-wm-offset: 46
+```
+
+Body
+
+```
+[
+  {
+    "value": "test-data",
+    "ts_type": "create",
+    "ts": 1536157879011,
+    "offset": 45,
+    "key": null,
+    "headers": {}
+  }
+]
+```
+
+If `offset` is not given the `last` message is fetched by default.
 
 Optional parameters:
   * `max_wait_time`: maximum time in ms to wait for the response, default 1000
   * `min_bytes`: minimum bytes to accumulate in the response, default 1
   * `max_bytes`: maximum bytes to fetch, default 100 kB
 
-`offset` can be an exact offset, `latest`, `earliest` or negative. Default latest.
+`offset` can be an exact offset, `last`, `latest`, `earliest` or negative.
+Default `last`.
 When negative, KastleX will assume it's a relative offset to the `latest`.
+i.e. `-1` is the same as `last`
 
 With `Accept: application/json` header the response will include all
 of the messages returned from kafka with their metadata
@@ -331,10 +351,15 @@ So if you just set `KASTLEX_USE_HTTPS=true`, Kastlex will be accepting TLS conne
     KASTLEX_PRODUCER_MAX_LINGER_MS=
     KASTLEX_PRODUCER_MAX_LINGER_COUNT=
 
-File with sasl credentials is a plain text file with 2 rows:
+File with sasl credentials is a plain text yml like file having `usnername`, `password` and `mechanism`,
+where `mechanism` is optional which supports `plain` (default), `scram_sha_256` or `scram_sha_512`.
+For example:
 
-    username: user
-    password: s3cr3t
+```
+username: user
+password: s3cr3t
+mechanism: scram_sha_512
+```
 
 If the variable is set, and file exists, KastleX will use SASL authentication when connecting to Kafka.
 
