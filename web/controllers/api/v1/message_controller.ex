@@ -63,11 +63,20 @@ defmodule Kastlex.API.V1.MessageController do
   defp read_headers(conn) do
     case get_req_header(conn, "x-message-headers") do
       [] -> []
-      json ->
-        {:ok, map} = Poison.decode(json)
-        Map.to_list(map)
+      [json] ->
+        try do
+          {:ok, headers} = Poison.decode(json)
+          headers |> Enum.map(fn({k, v}) -> {k, ensure_bin(v)} end)
+        catch _, _ ->
+          throw({:bad_message_headers, json})
+        end
+      x ->
+        throw({:bad_message_headers, x})
     end
   end
+
+  defp ensure_bin(x) when is_binary(x), do: x
+  defp ensure_bin(x), do: inspect x
 
   defp try_produce(conn, _topic, [], _key, _value, error) do
     Logger.error("#{inspect error}")

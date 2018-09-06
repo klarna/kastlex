@@ -24,7 +24,8 @@ defmodule Kastlex.MessageControllerTest do
     Application.put_env(:kastlex, :permissions_file_path, path)
     Kastlex.Users.reload
     # ensure we have a message to test on
-    :brod.produce_sync(Kastlex.get_brod_client_id(), topic, partition, "", "test-data")
+    value = %{value: "test-data", headers: [{"foo", "1"}, {"bar", "s"}, {"baz", "null"}]}
+    :brod.produce_sync(Kastlex.get_brod_client_id(), topic, partition, "key", value)
     {:ok, %{:topic => topic, :partition => partition}}
   end
 
@@ -43,8 +44,10 @@ defmodule Kastlex.MessageControllerTest do
     assert Map.has_key?(response, "messages")
     [msg] = response["messages"]
     assert Map.has_key?(msg, "key")
-    assert Map.has_key?(msg, "value")
+    assert "test-data" == Map.fetch!(msg, "value")
     assert Map.has_key?(msg, "offset")
+    headers = Map.fetch!(msg, "headers")
+    assert headers == %{"foo" => "1", "bar" => "s", "baz" => "null"}
   end
 
   test "show chosen resource v2", params do
@@ -66,6 +69,7 @@ defmodule Kastlex.MessageControllerTest do
     build_conn()
     |> put_req_header("content-type", "application/binary")
     |> put_req_header("authorization", "Bearer #{token}")
+    |> put_req_header("x-message-headers", "{\"foo\": 1, \"bar\": \"s\", \"baz\": null}")
     |> post(api_v1_message_path(build_conn(), :produce, params[:topic]), "1")
     |> response(204)
 
@@ -94,13 +98,14 @@ defmodule Kastlex.MessageControllerTest do
 
   test "show chosen resource when accepting binary", params do
     {:ok, token, _} = Guardian.encode_and_sign(%{user: "test"})
-    response = build_conn()
+    c = build_conn()
     |> put_req_header("accept", "application/binary")
     |> put_req_header("authorization", "Bearer #{token}")
     |> get(api_v1_message_path(build_conn(), :fetch, params[:topic], params[:partition]))
-    |> response(200)
-
-    assert response == "test-data"
+    [headers] = get_resp_header(c, "x-message-headers")
+    value = response(c, 200)
+    assert {:ok, %{"foo" => "1", "bar" => "s", "baz" => "null"}} == Poison.decode(headers)
+    assert value == "test-data"
   end
 
   test "does not show resource when permissions are not set", params do
@@ -188,7 +193,7 @@ defmodule Kastlex.MessageControllerTest do
     |> post(api_v1_message_path(build_conn(), :produce, "not_exist"), "test-data")
     |> response(404)
   end
-  
+
   test "creates resource (content type json)", params do
     {:ok, token, _} = Guardian.encode_and_sign(%{user: "test"})
     build_conn()
