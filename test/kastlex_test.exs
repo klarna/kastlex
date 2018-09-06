@@ -104,23 +104,4 @@ defmodule KastlexTest do
     end
   end
 
-  test "brod_commit_version_test" do
-    assert not Kastlex.CgCache.is_brod_roundrobin_v1_commit(:undefined)
-    assert not Kastlex.CgCache.is_brod_roundrobin_v1_commit("")
-    assert not Kastlex.CgCache.is_brod_roundrobin_v1_commit("+1/foo")
-    assert Kastlex.CgCache.is_brod_roundrobin_v1_commit("a@b/<0.120.0>")
-    assert Kastlex.CgCache.is_brod_roundrobin_v1_commit("ts 'a@b-c' <0.120.0>")
-  end
-
-  test "brod_commit_fix" do
-    input = [metadata: "a@b/<0,120,0>", offset: 0]
-    expected = [metadata: "a@b/<0,120,0>", offset: 1]
-    assert Keyword.equal?(expected, Kastlex.CgCache.maybe_fix_brod_commits(input))
-  end
-
-  test "brod_commit_no_fix" do
-    input = [metadata: "+1/a@b/<0,120,0>", offset: 0]
-    assert input == Kastlex.CgCache.maybe_fix_brod_commits(input)
-  end
-
 end

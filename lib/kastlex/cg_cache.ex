@@ -20,12 +20,11 @@ defmodule Kastlex.CgCache do
     committed_offsets =
       lookup(@offsets, group_id, %{}) |>
       Enum.map(fn({{topic, partition}, details}) ->
-                 details = maybe_fix_brod_commits(details)
                  offset = fetch!(details, :offset)
                  [ {:topic, topic},
                    {:partition, partition},
                    {:lagging, get_lagging(topic, partition, offset)}
-                 | details] |> to_maps
+                 | to_list(details)] |> to_maps
                end)
     case lookup(@cgs, group_id, false) do
       false ->
@@ -134,10 +133,15 @@ defmodule Kastlex.CgCache do
   defp put(x, key, val) when is_map(x), do: Map.put(x, key, val)
   defp put(x, key, val) when is_list(x), do: Keyword.put(x, key, val)
 
+  # this is kept for backward compatibility
+  # becase kastlex may get upgraded to work with ealier version dets cache
   defp to_maps({k, [x | _] = v}) when is_list(x), do: {k, :lists.map(&to_maps/1, v)}
   defp to_maps({k, [x | _] = v}) when is_tuple(x), do: {k, Map.new(v, &to_maps/1)}
   defp to_maps([{_, _} | _] = x), do: Map.new(:lists.map(&to_maps/1, x))
   defp to_maps({k, v}), do: {k, maybe_nil(v)}
+
+  defp to_list(l) when is_list(l), do: l
+  defp to_list(m) when is_map(m), do: Map.to_list(m)
 
   defp maybe_nil(:undefined), do: nil
   defp maybe_nil(value), do: value
@@ -162,33 +166,6 @@ defmodule Kastlex.CgCache do
         # high-watermark offset is not up-to-date
         0
     end
-  end
-
-  # brod prior to 3.3.4 (roundrobin_v2) commits consumed-offsets
-  # instead of next-to-fetch offset
-  # Here we try to find out if the commit is from brod roundrobin (v1) protocol
-  # and +1 on the committed offset to correct it
-  # This correction is necessary because otherwise KastleX will report
-  # lagging = 1 for brod < 3.3.4 when lagging is actually 0
-  defp maybe_fix_brod_commits(details) do
-    metadata = fetch!(details, :metadata)
-    case is_brod_roundrobin_v1_commit(metadata) do
-      true ->
-        offset = fetch!(details, :offset)
-        put(details, :offset, offset + 1)
-      false ->
-        details
-    end
-  end
-
-  # brod roundrobin v2 group protocol commits offsets with
-  # "+1/" prefix. roundrobin (v1) protocol commits offsets with
-  # metadata matches the above regexp
-  defp is_brod_roundrobin_v1_commit(:undefined), do: false
-  defp is_brod_roundrobin_v1_commit("+1/" <> _), do: false
-  defp is_brod_roundrobin_v1_commit(metadata) do
-    re = Regex.compile!(".*@.*[/|\s]<0\.[0-9]+\.[0-9]+>$")
-    Regex.match?(re, metadata)
   end
 end
 
