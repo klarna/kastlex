@@ -85,6 +85,9 @@ defmodule Kastlex.KafkaUtils do
         message = messages |> hd |> transform_kafka_message
         %{headers: message.headers |> to_json,
           payload: message.value,
+          offset: message.offset,
+          ts_type: message.ts_type,
+          ts: message.ts,
           high_watermark: hw_offset
          }
     end

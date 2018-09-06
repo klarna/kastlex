@@ -77,7 +77,11 @@ Body
       "ts": 1536157879011,
       "offset": 45,
       "key": null,
-      "headers": {}
+      "headers": {
+        "foo": "1",
+        "baz": "null",
+        "bar": "s"
+      }
     }
   ],
   "highWmOffset": 46,
@@ -105,7 +109,11 @@ Body
     "ts": 1536157879011,
     "offset": 45,
     "key": null,
-    "headers": {}
+    "headers": {
+      "foo": "1",
+      "baz": "null",
+      "bar": "s"
+    }
   }
 ]
 ```
@@ -125,8 +133,21 @@ i.e. `-1` is the same as `last`
 With `Accept: application/json` header the response will include all
 of the messages returned from kafka with their metadata
 
-With `Accept: application/binary` header KastleX will return `value`
-only of the last message in the message set.
+With `Accept: application/binary` header KastleX will return the value
+in http response body. Message offset, headers, ts_type and ts are put to http header.
+An example from cURL output:
+
+```
+$ curl -v -H "Accept: application/binary" localhost:8092/api/v2/messages/kastlex/0
+
+< x-request-id: 2l8sgeskov545ica5c000005
+< content-type: application/binary; charset=utf-8
+< x-high-wm-offset: 654
+< x-message-headers: {"foo":"1","baz":"null","bar":"s"}
+< x-message-offset: 653
+< x-message-ts: 1536228953642
+< x-message-ts-type: :create
+```
 
 ## Query available offsets for partition.
 
@@ -351,7 +372,7 @@ So if you just set `KASTLEX_USE_HTTPS=true`, Kastlex will be accepting TLS conne
     KASTLEX_PRODUCER_MAX_LINGER_MS=
     KASTLEX_PRODUCER_MAX_LINGER_COUNT=
 
-File with sasl credentials is a plain text yml like file having `usnername`, `password` and `mechanism`,
+File with sasl credentials is a plain text yml like file having `username`, `password` and `mechanism`,
 where `mechanism` is optional which supports `plain` (default), `scram_sha_256` or `scram_sha_512`.
 For example:
 

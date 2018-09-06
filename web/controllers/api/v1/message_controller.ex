@@ -41,11 +41,14 @@ defmodule Kastlex.API.V1.MessageController do
       {:ok, %{headers: headers,
               high_watermark: hw_offset,
               payload: payload
-             }} ->
+             } = resp} ->
         conn
         |> put_resp_content_type("application/binary")
         |> put_resp_header("x-high-wm-offset", Integer.to_string(hw_offset))
         |> maybe_put_message_headers(headers)
+        |> maybe_put_offset(resp)
+        |> maybe_put_ts(resp)
+        |> maybe_put_ts_type(resp)
         |> send_resp(200, payload)
       {:error, :unknown_topic_or_partition} ->
         send_json(conn, 404, %{error: :unknown_topic_or_partition})
@@ -66,7 +69,7 @@ defmodule Kastlex.API.V1.MessageController do
       [json] ->
         try do
           {:ok, headers} = Poison.decode(json)
-          headers |> Enum.map(fn({k, v}) -> {k, ensure_bin(v)} end)
+          headers |> Enum.map(fn({k, v}) -> {k, str(v)} end)
         catch _, _ ->
           throw({:bad_message_headers, json})
         end
@@ -74,9 +77,6 @@ defmodule Kastlex.API.V1.MessageController do
         throw({:bad_message_headers, x})
     end
   end
-
-  defp ensure_bin(x) when is_binary(x), do: x
-  defp ensure_bin(x), do: inspect x
 
   defp try_produce(conn, _topic, [], _key, _value, error) do
     Logger.error("#{inspect error}")
@@ -111,8 +111,19 @@ defmodule Kastlex.API.V1.MessageController do
   end
 
   defp maybe_put_message_headers(conn, nil), do: conn
-  defp maybe_put_message_headers(conn, headers) do
-    put_resp_header(conn, "x-message-headers", headers)
-  end
+  defp maybe_put_message_headers(conn, headers), do: put_resp_header(conn, "x-message-headers", headers)
+
+  defp maybe_put_offset(conn, %{offset: offset}), do: put_resp_header(conn, "x-message-offset", str(offset))
+  defp maybe_put_offset(conn, _), do: conn
+
+  defp maybe_put_ts_type(conn, %{ts_type: ts_type}), do: put_resp_header(conn, "x-message-ts-type", str(ts_type))
+  defp maybe_put_ts_type(conn, _), do: conn
+
+  defp maybe_put_ts(conn, %{ts: ts}), do: put_resp_header(conn, "x-message-ts", str(ts))
+  defp maybe_put_ts(conn, _), do: conn
+
+  defp str(x) when is_binary(x), do: x
+  defp str(x), do: inspect x
+
 end
 
