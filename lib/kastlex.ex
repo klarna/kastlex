@@ -43,7 +43,7 @@ defmodule Kastlex do
     kafka_cluster = system_env("KASTLEX_KAFKA_CLUSTER", [{'localhost', 9092}], &parse_endpoints/1)
     Logger.info "Kafka cluster: #{inspect kafka_cluster}"
 
-    brod_client_config = get_brod_client_config()
+    brod_client_config = get_brod_client_config(true)
     :ok = :brod.start_client(kafka_cluster, :kastlex, brod_client_config)
 
     # zookeeper connection
@@ -143,7 +143,7 @@ defmodule Kastlex do
                         Keyword.put(guardian, :ttl, {ttl, :seconds}))
   end
 
-  def get_brod_client_config(maybe_log \\ true) do
+  def get_brod_client_config(maybe_log \\ false) do
     log = case maybe_log do
       true -> fn(x) -> Logger.info(x) end
       false -> fn(_) -> :ok end
