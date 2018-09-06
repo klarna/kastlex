@@ -15,8 +15,10 @@
       * LeaderNotAvailable -> leader_not_available
   - Message files `crc`, `attributes` and `magic_byte` are removed from JSON fetch response
   - Per kafka message `headers` field is added to JSON fetch response.
-  - A new http header `x-message-headers` is added to both v1 and v2 binary fetch response.
+  - New http headers `x-message-headers`, `x-message-offset`, `x-message-ts` and `x-message-ts-type` are
+    added to both v1 and v2 binary fetch response.
     The header value is the kafka message header formated in JSON.
+  - Add `x-kafka-partition` and `x-message-offset` http headers to produce response
   - Stopped using 'latest as last' in fetch APIs, instead, introduced new logical offset 'last'.
     NOTE: in case the partition is empty, fetching 'last' will result in error.
 
