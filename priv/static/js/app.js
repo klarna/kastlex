@@ -327,7 +327,7 @@ var app = new Vue(
           var mapfun = function(broker){
             var res =
               { treenodename: broker.host+':'+broker.port
-              , tabledata: broker.endpoints.map(function(ep){return [ep]})
+              , tabledata: []
               };
             return res;
           }
