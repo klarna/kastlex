@@ -83,9 +83,12 @@ defmodule Kastlex.API.V1.MessageController do
     send_json(conn, 503, Map.new([error]))
   end
   defp try_produce(conn, topic, [p | partitions], key, value, _last_error) do
-    case :brod.produce_sync(:kastlex, topic, p, key, value) do
-      :ok ->
-        send_resp(conn, 204, "")
+    case :brod.produce_sync_offset(:kastlex, topic, p, key, value) do
+      {:ok, offset} ->
+        conn
+        |> put_resp_header("x-kafka-partition", str(p))
+        |> put_resp_header("x-message-offset", str(offset))
+        |> send_resp(204, "")
       {:error, :unknown_topic_or_partition} = error ->
         Logger.error("#{inspect error}")
         # does not make sense to try other partitions

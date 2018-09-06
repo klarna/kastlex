@@ -52,7 +52,11 @@ With the first version KastleX will pick a random partition to produce message t
 Use `Content-type: application/binary`.  
 Key is supplied as query parameter `key`.  
 Value is request body.  
-Successful response: HTTP Status 204 and empty body.  
+Successful response should have:
+- HTTP Status 204
+- HTTP header "x-kafka-partition" set for which partition the message was produced to
+- HTTP header "x-message-offset" set for which offset the message was persisted at
+- Empty HTTP body
 
 cURL example (-d implies POST):
 
