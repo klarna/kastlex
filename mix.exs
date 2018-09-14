@@ -27,7 +27,7 @@ defmodule Kastlex.Mixfile do
     [mod: {Kastlex, []},
      applications: [:logger, :phoenix, :phoenix_pubsub, :phoenix_html, :cowboy,
                     :gettext, :yamerl, :yaml_elixir, :comeonin, :erlzk, :brod,
-                    :guardian, :ssl, :observer, :logger_file_backend,
+                    :guardian, :ssl, :logger_file_backend,
                     :runtime_tools, :observer_cli, :recon]]
   end
 
