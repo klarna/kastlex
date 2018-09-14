@@ -36,7 +36,7 @@ mkdir -p %{buildroot}%{_sysconfdir}/sysconfig
 mkdir -p %{buildroot}%{_sysconfdir}/logrotate.d
 mkdir -p %{buildroot}%{_bindir}
 mkdir -p %{buildroot}%{_sharedstatedir}/%{_service}
-cp -r rel/%{_name} %{buildroot}%{_prefix}/
+cp -r _build/prod/rel/%{_name} %{buildroot}%{_prefix}/
 
 cat > %{buildroot}%{_unitdir}/%{_service}.service <<EOF
 [Unit]
