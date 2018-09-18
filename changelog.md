@@ -13,7 +13,7 @@
   - Error codes changed (per change in kafka spec and convention) from CamelCase to snake_case, e.g:
       * UnknownTopicOrPartition -> unknown_topic_or_partition
       * LeaderNotAvailable -> leader_not_available
-  - Message files `crc`, `attributes` and `magic_byte` are removed from JSON fetch response
+  - Message fileds `crc`, `attributes` and `magic_byte` are removed from JSON fetch response
   - Per kafka message `headers` field is added to JSON fetch response.
   - New http headers `x-message-headers`, `x-message-offset`, `x-message-ts` and `x-message-ts-type` are
     added to both v1 and v2 binary fetch response.
