@@ -95,8 +95,7 @@ defmodule Kastlex.KafkaUtils do
   end
 
   defp to_json(map) do
-    {:ok, json} = Poison.encode(map)
-    json
+    Jason.encode!(map)
   end
 
   defp transform_kafka_message(raw_msg) do

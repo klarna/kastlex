@@ -6,8 +6,7 @@ defmodule Kastlex.ErrorView do
   end
 
   def render("404.html", _assigns) do
-    {:ok, msg} = Poison.encode(%{error: "No route"})
-    {:safe, msg}
+    {:safe, Jason.encode!(%{error: "No route"})}
   end
 
   def render("500.json", _assigns) do

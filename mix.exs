@@ -37,12 +37,13 @@ defmodule Kastlex.Mixfile do
 
   defp deps do
     [
-      {:phoenix, "~> 1.3.4"},
-      {:phoenix_pubsub, "~> 1.0"},
+      {:phoenix, "~> 1.4.0"},
+      {:phoenix_pubsub, "~> 1.1"},
       {:phoenix_html, "~> 2.10"},
       {:phoenix_live_reload, "~> 1.0", only: :dev},
+      {:plug_cowboy, "~> 1.0"},
+      {:jason, "~> 1.0"},
       {:gettext, "~> 0.11"},
-      {:cowboy, "~> 1.0"},
       {:mock, "~> 0.3.2", only: :test},
       {:briefly, "~> 0.3.0", only: :test},
       {:logger_file_backend, "0.0.10"},

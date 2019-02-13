@@ -18,11 +18,11 @@ defmodule Kastlex do
     maybe_set_guardian_secret_key(system_env("KASTLEX_JWK_FILE"))
 
     # authentication/authorization
-    permission_file_default_path = Path.join(System.cwd(), "permissions.yml")
+    permission_file_default_path = Path.join(File.cwd!(), "permissions.yml")
     permissions_file_path = system_env("KASTLEX_PERMISSIONS_FILE_PATH", permission_file_default_path)
     Logger.info "Permissions file path: #{permissions_file_path}"
     Application.put_env(:kastlex, :permissions_file_path, permissions_file_path)
-    passwd_file_default_path = Path.join(System.cwd(), "passwd.yml")
+    passwd_file_default_path = Path.join(File.cwd!(), "passwd.yml")
     passwd_file_path = system_env("KASTLEX_PASSWD_FILE_PATH", passwd_file_default_path)
     Logger.info "Passwd file path: #{passwd_file_path}"
     Application.put_env(:kastlex, :passwd_file_path, passwd_file_path)

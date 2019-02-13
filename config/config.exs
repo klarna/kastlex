@@ -14,9 +14,7 @@ config :kastlex, Kastlex.Endpoint,
            adapter: Phoenix.PubSub.PG2]
 
 config :kastlex, Kastlex.MetadataCache,
-  refresh_timeout_ms: 30000,
-  zk_chroot: "/",
-  zk_session_timeout: 30000
+  refresh_timeout_ms: 30000
 
 config :kastlex, Kastlex.TokenStorage,
   topic: "_kastlex_tokens"
@@ -32,6 +30,8 @@ config :logger, :console,
 config :phoenix, :generators,
   migration: true,
   binary_id: false
+
+config :phoenix, :json_library, Jason
 
 config :mime, :types, %{
   "*/*" => ["json"],

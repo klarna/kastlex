@@ -1,7 +1,9 @@
 defmodule Kastlex.Endpoint do
   use Phoenix.Endpoint, otp_app: :kastlex
 
-  socket "/socket", Kastlex.UserSocket
+  socket "/socket", Kastlex.UserSocket,
+    websocket: true,
+    longpoll: false
 
   # Serve at "/" the static files from "priv/static" directory.
   #
@@ -24,8 +26,9 @@ defmodule Kastlex.Endpoint do
   plug Plug.Logger
 
   plug Plug.Parsers,
-    parsers: [:urlencoded, :multipart],
-    pass: ["*/*"]
+    parsers: [:urlencoded, :multipart, :json],
+    pass: ["*/*"],
+    json_decoder: Phoenix.json_library()
 
   plug Plug.MethodOverride
   plug Plug.Head

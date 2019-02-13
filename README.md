@@ -351,7 +351,6 @@ Correspinding permission item in permissions.yml file is 'revoke'.
     KASTLEX_PERMISSIONS_FILE_PATH=/path/to/permissions.yml
     KASTLEX_PASSWD_FILE_PATH=/path/to/passwd.yml
     KASTLEX_KAFKA_CLUSTER=kafka-host1:9092,kafka-host2:9092
-    KASTLEX_ZOOKEEPER_CLUSTER=zk-host1:2181,zk-host2:2181
 
 ## (Optional) Set custom HTTP port
 

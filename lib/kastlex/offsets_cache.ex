@@ -35,7 +35,7 @@ defmodule Kastlex.OffsetsCache do
   end
 
   def init(_) do
-    :ets.new(@table, [:set, :protected, :named_table, {:read_concurrency, true}])
+    :ets.new(@table, [:set, :public, :named_table, {:read_concurrency, true}])
     env = Application.get_env(:kastlex, __MODULE__, [])
     refresh_timeout_ms = Keyword.get(env, :refresh_offsets_timeout_ms, @default_refresh_timeout_ms)
     list_offsets_timeout_ms = Keyword.get(env, :list_offsets_timeout_ms, @default_list_offsets_timeout_ms)
@@ -50,7 +50,6 @@ defmodule Kastlex.OffsetsCache do
   end
 
   def handle_info({@refresh, id, generation}, %{generation: generation} = state) do
-    Logger.debug "Refreshing offsets for node #{id}, generation #{generation}"
     refresh_leader_offsets(id, generation, state.refresh_timeout_ms)
     {:noreply, state}
   end
@@ -101,23 +100,20 @@ defmodule Kastlex.OffsetsCache do
         client_id = Kastlex.get_brod_client_id()
         {:ok, conn} = :brod_client.get_connection(client_id, String.to_charlist(leader.host), leader.port)
         {:ok, kpro_rsp(msg: msg)} = :kpro.request_sync(conn, request, 10_000)
-        handle_offsets_response(msg)
+        handle_offsets_response(msg[:responses])
         :erlang.send_after(refresh_timeout_ms, parent, {@refresh, id, generation})
       end)
   end
 
-  defp handle_offsets_response(msg) do
-    responses = msg[:responses]
+  defp handle_offsets_response(responses) do
     Enum.each(responses,
               fn(tr) ->
                 Enum.each(tr[:partition_responses],
                           fn(pr) ->
-                            try do
-                              [offset] = pr[:offsets]
-                              :ets.insert(@table, {{tr[:topic], pr[:partition]}, offset})
-                              rescue _e ->
-                                :ok
-                            end
+                            t = tr[:topic]
+                            p = pr[:partition]
+                            [offset] = pr[:offsets]
+                            :ets.insert(@table, {{t, p}, offset})
                           end)
               end)
   end
