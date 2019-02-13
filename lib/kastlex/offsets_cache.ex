@@ -94,11 +94,12 @@ defmodule Kastlex.OffsetsCache do
             end)
             [[topic: t, partitions: partition_fields] | acc]
           end)
-        request_fields = [replica_id: -1, topics: topics]
-        request = :kpro.make_request(:list_offsets, 0, request_fields)
-        leader = Kastlex.MetadataCache.get_leader(id)
         client_id = Kastlex.get_brod_client_id()
+        leader = Kastlex.MetadataCache.get_leader(id)
         {:ok, conn} = :brod_client.get_connection(client_id, String.to_charlist(leader.host), leader.port)
+        vsn = :brod_kafka_apis.pick_version(conn, :list_offsets)
+        request_fields = [replica_id: -1, topics: topics]
+        request = :kpro.make_request(:list_offsets, vsn, request_fields)
         {:ok, kpro_rsp(msg: msg)} = :kpro.request_sync(conn, request, 10_000)
         handle_offsets_response(msg[:responses])
         :erlang.send_after(refresh_timeout_ms, parent, {@refresh, id, generation})
