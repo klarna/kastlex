@@ -83,40 +83,61 @@ defmodule Kastlex.OffsetsCache do
     parent = self()
     Kernel.spawn(
       fn ->
-        lps = Kastlex.MetadataCache.get_leader_partitions(id)
-        topics = Enum.reduce(lps, [],
-          fn({t, partitions}, acc) ->
-            partition_fields = Enum.reduce(partitions, [],
-            fn(p, acc2) ->
-              [[partition: p,
-                timestamp: -1,
-                max_num_offsets: 1] | acc2]
+        try do
+          lps = Kastlex.MetadataCache.get_leader_partitions(id)
+          topics = Enum.reduce(lps, [],
+            fn({t, partitions}, acc) ->
+              partition_fields = Enum.reduce(partitions, [],
+              fn(p, acc2) ->
+                [[partition: p,
+                  timestamp: -1,
+                  max_num_offsets: 1] | acc2]
+              end)
+              [[topic: t, partitions: partition_fields] | acc]
             end)
-            [[topic: t, partitions: partition_fields] | acc]
-          end)
-        client_id = Kastlex.get_brod_client_id()
-        leader = Kastlex.MetadataCache.get_leader(id)
-        {:ok, conn} = :brod_client.get_connection(client_id, String.to_charlist(leader.host), leader.port)
-        vsn = :brod_kafka_apis.pick_version(conn, :list_offsets)
-        request_fields = [replica_id: -1, topics: topics]
-        request = :kpro.make_request(:list_offsets, vsn, request_fields)
-        {:ok, kpro_rsp(msg: msg)} = :kpro.request_sync(conn, request, 10_000)
-        handle_offsets_response(msg[:responses])
-        :erlang.send_after(refresh_timeout_ms, parent, {@refresh, id, generation})
+          client_id = Kastlex.get_brod_client_id()
+          leader = Kastlex.MetadataCache.get_leader(id)
+          {:ok, conn} = :brod_client.get_connection(client_id, String.to_charlist(leader.host), leader.port)
+          vsn = :brod_kafka_apis.pick_version(conn, :list_offsets)
+          request_fields = get_list_offsets_fields(vsn, topics)
+          request = :kpro.make_request(:list_offsets, vsn, request_fields)
+          {:ok, kpro_rsp(msg: msg)} = :kpro.request_sync(conn, request, 10_000)
+          handle_offsets_response(msg[:responses])
+        rescue e ->
+            Logger.error(Exception.format(:error, e, __STACKTRACE__))
+        after
+          :erlang.send_after(refresh_timeout_ms, parent, {@refresh, id, generation})
+        end
       end)
   end
 
-  defp handle_offsets_response(responses) do
-    Enum.each(responses,
-              fn(tr) ->
-                Enum.each(tr[:partition_responses],
-                          fn(pr) ->
-                            t = tr[:topic]
-                            p = pr[:partition]
-                            [offset] = pr[:offsets]
-                            :ets.insert(@table, {{t, p}, offset})
-                          end)
-              end)
+  defp get_list_offsets_fields(vsn, topics) when vsn > 1 do
+    [replica_id: -1, isolation_level: :read_uncommitted, topics: topics]
   end
+  defp get_list_offsets_fields(_, topics) do
+    [replica_id: -1, topics: topics]
+  end
+
+  defp handle_offsets_response(responses) do
+    responses |> Enum.each(
+      fn(tr) ->
+        t = tr[:topic]
+        tr[:partition_responses] |> Enum.each(fn(pr) -> handle_pr(t, pr, pr[:error_code]) end)
+      end)
+  end
+
+  defp handle_pr(t, pr, err) when err == :no_error do
+    p = pr[:partition]
+    cond do
+      pr[:offsets] != nil ->
+        [offset] = pr[:offsets]
+        :ets.insert(@table, {{t, p}, offset})
+      Kernel.is_integer(pr[:offset]) ->
+        :ets.insert(@table, {{t, p}, pr[:offset]})
+      true ->
+        Logger.error "bad partition response: #{inspect pr}"
+    end
+  end
+  defp handle_pr(_t, _pr, _err), do: :ok
 
 end
