@@ -18,11 +18,11 @@ defmodule Kastlex do
     maybe_set_guardian_secret_key(system_env("KASTLEX_JWK_FILE"))
 
     # authentication/authorization
-    permission_file_default_path = Path.join(System.cwd(), "permissions.yml")
+    permission_file_default_path = Path.join(File.cwd!(), "permissions.yml")
     permissions_file_path = system_env("KASTLEX_PERMISSIONS_FILE_PATH", permission_file_default_path)
     Logger.info "Permissions file path: #{permissions_file_path}"
     Application.put_env(:kastlex, :permissions_file_path, permissions_file_path)
-    passwd_file_default_path = Path.join(System.cwd(), "passwd.yml")
+    passwd_file_default_path = Path.join(File.cwd!(), "passwd.yml")
     passwd_file_path = system_env("KASTLEX_PASSWD_FILE_PATH", passwd_file_default_path)
     Logger.info "Passwd file path: #{passwd_file_path}"
     Application.put_env(:kastlex, :passwd_file_path, passwd_file_path)
@@ -46,11 +46,6 @@ defmodule Kastlex do
     brod_client_config = get_brod_client_config(true)
     :ok = :brod.start_client(kafka_cluster, :kastlex, brod_client_config)
 
-    # zookeeper connection
-    zk_cluster = system_env("KASTLEX_ZOOKEEPER_CLUSTER", [{'localhost', 2181}], &parse_endpoints/1)
-    Logger.info "Zookeeper cluster: #{inspect zk_cluster}"
-    Application.put_env(:kastlex, :zk_cluster, zk_cluster)
-
     children = [
       worker(Kastlex.Users, []),
       worker(Kastlex.TokenStorage, []),
@@ -64,8 +59,6 @@ defmodule Kastlex do
   end
 
   def get_brod_client_id(), do: :kastlex
-
-  def get_zk_cluster(), do: Application.fetch_env!(:kastlex, :zk_cluster)
 
   # Tell Phoenix to update the endpoint configuration
   # whenever the application is updated.
@@ -111,9 +104,15 @@ defmodule Kastlex do
                         Keyword.put(endpoint, :secret_key_base, secret_key_base))
   end
 
-  defp maybe_set_guardian_secret_key(nil), do: :ok
+  defp maybe_set_guardian_secret_key(nil) do
+    init_secret_key(Application.get_env(:guardian, Guardian)[:secret_key_file])
+  end
   defp maybe_set_guardian_secret_key(file) do
-    Logger.info "Using custom jwk from file: #{file}"
+    init_secret_key(file)
+  end
+
+  defp init_secret_key(file) do
+    Logger.info "Reading secret key from #{file}"
     jwk = JOSE.JWK.from_pem_file(file)
     guardian = Application.fetch_env!(:guardian, Guardian)
     Application.put_env(:guardian, Guardian,

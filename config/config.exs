@@ -14,17 +14,15 @@ config :kastlex, Kastlex.Endpoint,
            adapter: Phoenix.PubSub.PG2]
 
 config :kastlex, Kastlex.MetadataCache,
-  refresh_timeout_ms: 30000,
-  zk_chroot: "/",
-  zk_session_timeout: 30000
+  refresh_timeout_ms: 30000
 
 config :kastlex, Kastlex.TokenStorage,
   topic: "_kastlex_tokens"
 
 # Configures Elixir's Logger
 config :logger, :console,
-  format: "$time [$level] $metadata$message\n",
-  metadata: [:request_id, :remote_ip],
+  format: "$time [$level] $message $metadata\n",
+  metadata: [:request_id, :remote_ip, :module, :function, :line],
   handle_otp_reports: true,
   handle_sasl_reports: true
 
@@ -32,6 +30,8 @@ config :logger, :console,
 config :phoenix, :generators,
   migration: true,
   binary_id: false
+
+config :phoenix, :json_library, Jason
 
 config :mime, :types, %{
   "*/*" => ["json"],
@@ -45,7 +45,7 @@ config :guardian, Guardian,
   issuer: "Kastlex",
   ttl: { 30, :days },
   verify_issuer: true,
-  secret_key: "_AbBL082GKlPjoY9o-KM78PhyALavJRtZXOW7D-ZyqE",
+  secret_key_file: "priv/jwk.pem",
   serializer: Kastlex.GuardianSerializer
 
 # Import environment specific config. This must remain at the bottom

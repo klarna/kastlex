@@ -19,17 +19,13 @@ defmodule Kastlex.API.V1.OffsetController do
             send_resp(conn, 503, error)
         end
       {:error, :unknown_topic_or_partition} ->
-        {:ok, msg} = Poison.encode(%{error: "unknown topic or partition"})
-        send_resp(conn, 404, msg)
+        send_resp(conn, 404, Jason.encode!(%{error: "unknown topic or partition"}))
       {:error, :leader_not_available} ->
-        {:ok, msg} = Poison.encode(%{error: "unknown topic/partition or no leader for partition"})
-        send_resp(conn, 404, msg)
+        send_resp(conn, 404, Jason.encode!(%{error: "unknown topic/partition or no leader for partition"}))
       {:error, reason} when is_binary(reason) ->
-        {:ok, msg} = Poison.encode(%{error: reason})
-        send_resp(conn, 503, msg)
+        send_resp(conn, 503, Jason.encode!(%{error: reason}))
       {:error, reason} ->
-        {:ok, msg} = Poison.encode(%{error: "#{inspect reason}"})
-        send_resp(conn, 503, msg)
+        send_resp(conn, 503, Jason.encode!(%{error: "#{inspect reason}"}))
     end
   end
 end

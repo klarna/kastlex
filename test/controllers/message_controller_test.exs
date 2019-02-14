@@ -199,7 +199,7 @@ defmodule Kastlex.MessageControllerTest do
     build_conn()
     |> put_req_header("content-type", "application/json")
     |> put_req_header("authorization", "Bearer #{token}")
-    |> post(api_v1_message_path(build_conn(), :produce, params[:topic]), "test-data")
+    |> post(api_v1_message_path(build_conn(), :produce, params[:topic]), Jason.encode!(%{test: "data"}))
     |> response(204)
 
   end
@@ -207,7 +207,7 @@ defmodule Kastlex.MessageControllerTest do
   test "does not create resource when permissions are not set (content type json)", params do
     build_conn()
     |> put_req_header("content-type", "application/json")
-    |> post(api_v1_message_path(build_conn(), :produce, params[:topic]), "test-data")
+    |> post(api_v1_message_path(build_conn(), :produce, params[:topic]), Jason.encode!(%{test: "data"}))
     |> response(403)
   end
 
@@ -216,7 +216,7 @@ defmodule Kastlex.MessageControllerTest do
     build_conn()
     |> put_req_header("content-type", "application/json")
     |> put_req_header("authorization", "Bearer #{token}")
-    |> post(api_v1_message_path(build_conn(), :produce, params[:topic]), "test-data")
+    |> post(api_v1_message_path(build_conn(), :produce, params[:topic]), Jason.encode!(%{test: "data"}))
     |> response(403)
   end
 
@@ -225,7 +225,7 @@ defmodule Kastlex.MessageControllerTest do
     build_conn()
     |> put_req_header("content-type", "application/json")
     |> put_req_header("authorization", "Bearer #{token}")
-    |> post(api_v1_message_path(build_conn(), :produce, params[:topic]), "test-data")
+    |> post(api_v1_message_path(build_conn(), :produce, params[:topic]), Jason.encode!(%{test: "data"}))
     |> response(403)
   end
 
@@ -234,7 +234,7 @@ defmodule Kastlex.MessageControllerTest do
     build_conn()
     |> put_req_header("content-type", "application/json")
     |> put_req_header("authorization", "Bearer #{token}")
-    |> post(api_v1_message_path(build_conn(), :produce, "not_exist"), "test-data")
+    |> post(api_v1_message_path(build_conn(), :produce, "not_exist"), Jason.encode!(%{test: "data"}))
     |> response(404)
   end
 end

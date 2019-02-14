@@ -3,14 +3,11 @@ defmodule Kastlex.MetadataCache do
 
   use GenServer
 
-  # TODO: use zk watchers to reduce IO
-
   @table __MODULE__
   @server __MODULE__
   @refresh :refresh
   @sync :sync
-
-  @topics_config_path "/config/topics"
+  @leaders_table :leader_partitions
 
   def sync() do
     GenServer.call(@server, @sync)
@@ -26,6 +23,13 @@ defmodule Kastlex.MetadataCache do
     brokers
   end
 
+  def get_leader(id) do
+    case Enum.find(get_brokers(), nil, fn(x) -> x.node_id == id end) do
+      nil -> false
+      leader -> leader
+    end
+  end
+
   def existing_partition?(t, p) do
     case Enum.find(get_topics(), nil, fn(x) -> x.topic == t end) do
       nil -> false
@@ -39,43 +43,30 @@ defmodule Kastlex.MetadataCache do
     topics
   end
 
-  def partitions_by_leader() do
-    acc = Enum.reduce(get_brokers(), %{}, fn(b, acc) -> Map.put(acc, b.id, %{}) end)
-    List.foldl(get_topics(), acc,
-               fn(topic, acc) ->
-                 List.foldl(topic.partitions, acc,
-                            fn(p, acc2) ->
-                              leader_topics = Map.get(acc2, p.leader, %{})
-                              leader_partitions = [p.partition | Map.get(leader_topics, topic.topic, [])]
-                              leader_topics = Map.put(leader_topics, topic.topic, leader_partitions)
-                              Map.put(acc2, p.leader, leader_topics)
-                            end)
-               end)
+  def get_leader_ids() do
+    :ets.select(@leaders_table, [{{:"$1", :_}, [], [:"$1"]}])
   end
 
-  def start_link(options) do
-    GenServer.start_link(__MODULE__, options, [name: @server])
+  def get_leader_partitions(node_id) do
+    [{_, partitions}] = :ets.lookup(@leaders_table, node_id)
+    partitions
   end
 
-  def init(options) do
+  def start_link() do
+    GenServer.start_link(__MODULE__, [], [name: @server])
+  end
+
+  def init(_) do
     :ets.new(@table, [:set, :protected, :named_table])
     :ets.insert(@table, {:ts, :erlang.system_time()})
     :ets.insert(@table, {:brokers, []})
     :ets.insert(@table, {:topics, []})
+    :ets.new(@leaders_table, [:set, :protected, :named_table])
+    do_refresh()
     env = Application.get_env(:kastlex, __MODULE__)
-    refresh_timeout_ms = Keyword.fetch!(env, :refresh_timeout_ms)
-    zk_cluster = options.zk_cluster
-    zk_session_timeout = Keyword.fetch!(env, :zk_session_timeout)
-    zk_chroot = Keyword.fetch!(env, :zk_chroot)
-    {:ok, zk} = :erlzk.connect(zk_cluster, zk_session_timeout, [chroot: zk_chroot])
-    state = %{refresh_timeout_ms: refresh_timeout_ms,
-              zk: zk,
-              zk_cluster: zk_cluster,
-              zk_session_timeout: zk_session_timeout,
-              zk_chroot: zk_chroot}
-    do_refresh(state)
-    :erlang.send_after(state.refresh_timeout_ms, Kernel.self(), @refresh)
-    {:ok, state}
+    refresh_timeout_ms = env[:refresh_timeout_ms]
+    :erlang.send_after(refresh_timeout_ms, Kernel.self(), @refresh)
+    {:ok, %{refresh_timeout_ms: refresh_timeout_ms}}
   end
 
   def handle_call(@sync, _, state) do
@@ -83,7 +74,7 @@ defmodule Kastlex.MetadataCache do
   end
 
   def handle_info(@refresh, state) do
-    do_refresh(state)
+    do_refresh()
     :erlang.send_after(state.refresh_timeout_ms, Kernel.self(), @refresh)
     {:noreply, state}
   end
@@ -97,39 +88,47 @@ defmodule Kastlex.MetadataCache do
     Logger.info "#{inspect Kernel.self} is terminating: #{inspect reason}"
   end
 
-  defp do_refresh(state) do
+  defp do_refresh() do
+    Logger.info "refreshing metadata"
     case :brod_client.get_metadata(Kastlex.get_brod_client_id(), :all) do
       {:ok, meta} ->
         :ets.insert(@table, {:ts, :erlang.system_time()})
-        brokers = meta[:brokers] |> Enum.map(fn(x) ->
-                                               %{host: x[:host], port: x[:port], id: x[:node_id]}
-                                             end)
+        # convert kewords to maps
+        brokers = Enum.map(meta[:brokers], &Map.new/1)
         :ets.insert(@table, {:brokers, brokers})
-        topics = Enum.map(meta[:topic_metadata],
-                          fn(tm) ->
-                            partitions = Enum.map(tm[:partition_metadata],
-                                                  fn(x) ->
-                                                    %{isr: Enum.sort(x[:isr]),
-                                                      leader: x[:leader],
-                                                      partition: x[:partition],
-                                                      replicas: Enum.sort(x[:replicas])}
-                                                  end)
-                            config = get_topic_config(state.zk, tm[:topic])
-                            %{topic: tm[:topic],
-                              config: config,
-                              partitions: partitions}
-                          end)
+        # init leader_partitions
+        leader_partitions = Map.new(Enum.map(brokers, fn(broker) -> {broker.node_id, %{}} end))
+        {topics, leader_partitions} = Enum.map_reduce(meta[:topic_metadata],
+          leader_partitions,
+          &map_topic_meta/2)
         :ets.insert(@table, {:topics, topics})
+        :ets.insert(@leaders_table, Map.to_list(leader_partitions))
       {:error, reason} ->
         Logger.error "Error fetching metadata: #{inspect reason}"
     end
   end
 
-  defp get_topic_config(zk, topic) do
-    config_path = Enum.join([@topics_config_path, topic], "/")
-    {:ok, {config_json, _}} = :erlzk.get_data(zk, config_path)
-    %{"config" => config} = Poison.decode!(config_json)
-    config
+  defp map_topic_meta(tm, leader_partitions) do
+    topic = tm[:topic]
+    map_partition_meta = fn(pm, lps) ->
+      leader = pm[:leader]
+      partition = pm[:partition]
+      p = %{isr: Enum.sort(pm[:isr]),
+            leader: leader,
+            partition: partition,
+            replicas: Enum.sort(pm[:replicas])}
+      lps = Kernel.update_in(lps[leader][topic],
+                             fn nil -> [partition]
+                                x   -> [partition | x]
+                             end)
+      {p, lps}
+    end
+    {partitions, leader_partitions} = Enum.map_reduce(tm[:partition_metadata],
+                                                      leader_partitions,
+                                                      map_partition_meta)
+    topic = %{topic: topic,
+              partitions: partitions}
+    {topic, leader_partitions}
   end
 
 end

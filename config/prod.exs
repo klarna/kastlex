@@ -14,8 +14,8 @@ config :logger,
 config :logger, :kastlex,
   path: "/var/log/kastlex/kastlex.log",
   level: :info,
-  format: "$time [$level] $metadata$message\n",
-  metadata: [:request_id, :remote_ip],
+  format: "$time [$level] $message $metadata\n",
+  metadata: [:request_id, :remote_ip, :module, :function, :line],
   handle_otp_reports: true,
   handle_sasl_reports: true
 
@@ -25,4 +25,5 @@ config :guardian, Guardian,
   issuer: "Kastlex",
   ttl: { 30, :days },
   verify_issuer: true,
+  secret_key_file: "/etc/kastlex/jwk.pem",
   serializer: Kastlex.GuardianSerializer

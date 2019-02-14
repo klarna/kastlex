@@ -68,8 +68,7 @@ defmodule Kastlex.API.V1.MessageController do
       [] -> []
       [json] ->
         try do
-          {:ok, headers} = Poison.decode(json)
-          headers |> Enum.map(fn({k, v}) -> {k, str(v)} end)
+          Jason.decode!(json) |> Enum.map(fn({k, v}) -> {k, str(v)} end)
         catch _, _ ->
           throw({:bad_message_headers, json})
         end

@@ -5,9 +5,11 @@ defmodule Kastlex.OffsetsCache do
   @table :offsets
   @server __MODULE__
   @refresh :refresh
-  @default_refresh_timeout_ms 10000
+  @default_refresh_timeout_ms 10_000
+  @default_list_offsets_timeout_ms 10_000
 
   import Record, only: [defrecord: 2, extract: 2]
+  defrecord :kpro_req, extract(:kpro_req, from_lib: "kafka_protocol/include/kpro.hrl")
   defrecord :kpro_rsp, extract(:kpro_rsp, from_lib: "kafka_protocol/include/kpro.hrl")
 
   def get_hwm_offset(topic, partition) do
@@ -24,80 +26,118 @@ defmodule Kastlex.OffsetsCache do
     end)
   end
 
-  def start_link(options) do
-    GenServer.start_link(__MODULE__, options, [name: @server])
+  def refresh_leader_offsets(id) do
+    GenServer.cast(@server, {@refresh, id})
   end
 
-  def init(_options) do
-    :ets.new(@table, [:set, :protected, :named_table, {:read_concurrency, true}])
+  def start_link() do
+    GenServer.start_link(__MODULE__, [], [name: @server])
+  end
+
+  def init(_) do
+    :ets.new(@table, [:set, :public, :named_table, {:read_concurrency, true}])
     env = Application.get_env(:kastlex, __MODULE__, [])
     refresh_timeout_ms = Keyword.get(env, :refresh_offsets_timeout_ms, @default_refresh_timeout_ms)
+    list_offsets_timeout_ms = Keyword.get(env, :list_offsets_timeout_ms, @default_list_offsets_timeout_ms)
     :erlang.send_after(0, Kernel.self(), @refresh)
-    client_config = Kastlex.get_brod_client_config(_logconfg = false)
-    {:ok, %{refresh_timeout_ms: refresh_timeout_ms,
-            client_config: client_config}}
+    {:ok, %{client_id: Kastlex.get_brod_client_id(),
+            refresh_timeout_ms: refresh_timeout_ms,
+            list_offsets_timeout_ms: list_offsets_timeout_ms,
+            cached_leaders: [],
+            kafka_requests: %{},
+            generation: 1
+           }}
   end
 
-  def handle_info(@refresh, %{client_config: client_config} = state) do
-    Kastlex.MetadataCache.partitions_by_leader() |> Enum.each(fn(x) -> refresh_leader_offsets(client_config, x) end)
-    :erlang.send_after(state.refresh_timeout_ms, Kernel.self(), @refresh)
+  def handle_info({@refresh, id, generation}, %{generation: generation} = state) do
+    refresh_leader_offsets(id, generation, state.refresh_timeout_ms)
+    {:noreply, state}
+  end
+  def handle_info({@refresh, _id, _generation}, state) do
+    # wrong generation, drop the message
     {:noreply, state}
   end
 
-  def handle_info(msg, state) do
-    Logger.error "Unexpected msg: #{inspect msg}"
+  def handle_info(@refresh, state) do
+    leaders = Kastlex.MetadataCache.get_leader_ids()
+    state = case Enum.sort(leaders) == state.cached_leaders do
+              true -> state
+              false ->
+                Logger.info "resetting requests and leaders cache. " <>
+                  "Leaders = #{inspect leaders}, " <>
+                  "cached leaders = #{inspect state.cached_leaders}"
+                # bump generation
+                generation = state.generation + 1
+                Enum.each(leaders,fn(id) ->
+                  refresh_leader_offsets(id, generation, state.refresh_timeout_ms) end)
+                %{state | :cached_leaders => Enum.sort(leaders), :generation => generation}
+            end
     {:noreply, state}
   end
 
   def terminate(reason, _state) do
-    Logger.info "#{inspect Kernel.self} is terminating: #{inspect reason}"
+    Logger.info "terminating: #{inspect reason}"
   end
 
-  def refresh_leader_offsets(client_config, {id, topics}) do
-    leader = Kastlex.MetadataCache.get_brokers |> Enum.find(fn(x) -> x.id == id end)
-    case leader do
-      nil ->
-        Logger.error("Error refresing offsets for node #{id}: not found in broker metadata")
-      _ ->
-        refresh_leader_offsets(client_config, leader, topics)
-    end
+  def refresh_leader_offsets(id, generation, refresh_timeout_ms) do
+    parent = self()
+    Kernel.spawn(
+      fn ->
+        try do
+          lps = Kastlex.MetadataCache.get_leader_partitions(id)
+          topics = Enum.reduce(lps, [],
+            fn({t, partitions}, acc) ->
+              partition_fields = Enum.reduce(partitions, [],
+              fn(p, acc2) ->
+                [[partition: p,
+                  timestamp: -1,
+                  max_num_offsets: 1] | acc2]
+              end)
+              [[topic: t, partitions: partition_fields] | acc]
+            end)
+          client_id = Kastlex.get_brod_client_id()
+          leader = Kastlex.MetadataCache.get_leader(id)
+          {:ok, conn} = :brod_client.get_connection(client_id, String.to_charlist(leader.host), leader.port)
+          vsn = :brod_kafka_apis.pick_version(conn, :list_offsets)
+          request_fields = get_list_offsets_fields(vsn, topics)
+          request = :kpro.make_request(:list_offsets, vsn, request_fields)
+          {:ok, kpro_rsp(msg: msg)} = :kpro.request_sync(conn, request, 10_000)
+          handle_offsets_response(msg[:responses])
+        rescue e ->
+            Logger.error(Exception.format(:error, e, __STACKTRACE__))
+        after
+          :erlang.send_after(refresh_timeout_ms, parent, {@refresh, id, generation})
+        end
+      end)
   end
 
-  def refresh_leader_offsets(client_config, leader, topics) do
-    topics = Enum.reduce(topics, [],
-                         fn({t, partitions}, acc) ->
-                           partition_fields = Enum.reduce(partitions, [],
-                                                          fn(p, acc2) ->
-                                                            [[partition: p,
-                                                              timestamp: -1,
-                                                              max_num_offsets: 1] | acc2]
-                                                          end)
-                           [[topic: t, partitions: partition_fields] | acc]
-                         end)
-    request_fields = [replica_id: -1, topics: topics]
-    request = :kpro.make_request(:list_offsets, 0, request_fields)
-    endpoints = [{String.to_charlist(leader.host), leader.port}]
-    do_fun = fn(connection) ->
-      {:ok, response} = :kpro.request_sync(connection, request, 10_000)
-      responses = kpro_rsp(response)[:msg][:responses]
-      Enum.each(responses,
-                fn(tr) ->
-                  Enum.each(tr[:partition_responses],
-                            fn(pr) ->
-                              try do
-                                [offset] = pr[:offsets]
-                                :ets.insert(@table, {{tr[:topic], pr[:partition]}, offset})
-                              rescue _e ->
-                                :ok
-                              end
-                            end)
-                end)
-    end
-    try do
-      :kpro_brokers.with_connection(endpoints, client_config, do_fun)
-    catch
-      _, reason ->
-        Logger.error("Error refresing offsets for #{leader.host}: #{inspect reason}")
+  defp get_list_offsets_fields(vsn, topics) when vsn > 1 do
+    [replica_id: -1, isolation_level: :read_uncommitted, topics: topics]
+  end
+  defp get_list_offsets_fields(_, topics) do
+    [replica_id: -1, topics: topics]
+  end
+
+  defp handle_offsets_response(responses) do
+    responses |> Enum.each(
+      fn(tr) ->
+        t = tr[:topic]
+        tr[:partition_responses] |> Enum.each(fn(pr) -> handle_pr(t, pr, pr[:error_code]) end)
+      end)
+  end
+
+  defp handle_pr(t, pr, err) when err == :no_error do
+    p = pr[:partition]
+    cond do
+      pr[:offsets] != nil ->
+        [offset] = pr[:offsets]
+        :ets.insert(@table, {{t, p}, offset})
+      Kernel.is_integer(pr[:offset]) ->
+        :ets.insert(@table, {{t, p}, pr[:offset]})
+      true ->
+        Logger.error "bad partition response: #{inspect pr}"
     end
   end
+  defp handle_pr(_t, _pr, _err), do: :ok
+
 end
