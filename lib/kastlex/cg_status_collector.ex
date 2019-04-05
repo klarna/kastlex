@@ -22,8 +22,6 @@ defmodule Kastlex.CgStatusCollector do
 
   def handle_info({:post_init, options}, state) do
     Kastlex.MetadataCache.sync()
-    cache_dir = Application.get_env(:kastlex, :cg_cache_dir, :priv)
-    :ok = Kastlex.CgCache.init(cache_dir)
     topics = Kastlex.MetadataCache.get_topics()
     case Enum.find(topics, nil, fn(x) -> x.topic == @topic end) do
       nil ->
@@ -57,7 +55,7 @@ defmodule Kastlex.CgStatusCollector do
   end
 
   def terminate(_reason, _state) do
-    Kastlex.CgCache.close()
+    :ok
   end
 
   def subscriber(client, partition, exclude) do

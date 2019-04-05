@@ -6,6 +6,7 @@ defmodule Kastlex.Collectors do
   end
 
   def init(_options) do
+    :ok = Kastlex.CgCache.init()
     zk_cluster = Kastlex.get_zk_cluster
     client_id = Kastlex.get_brod_client_id
     children =

@@ -7,3 +7,6 @@
   For the same reason, KastleX calculated lagging as `high-watermark-offset - committed-offset - 1`,
   1.5.4 changed it to `high-watermark-offset - committed-offset`.
 
+* 1.5.5 Fix return result of Kastlex.Users.get_user
+* 1.5.6 Change consumer cg cache from dets to ets
+
