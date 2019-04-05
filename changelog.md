@@ -22,3 +22,6 @@
   - Stopped using 'latest as last' in fetch APIs, instead, introduced new logical offset 'last'.
     NOTE: in case the partition is empty, fetching 'last' will result in error.
 
+* 1.5.5 Fix return result of Kastlex.Users.get_user
+* 1.5.6 Change consumer cg cache from dets to ets
+
