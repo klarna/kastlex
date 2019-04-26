@@ -50,7 +50,7 @@ defmodule Kastlex.Mixfile do
       {:observer_cli, "~> 1.3.4"},
       {:recon, "~> 2.3.6"},
       {:yaml_elixir, "~> 2.1.0"},
-      {:brod, "~> 3.7.1"},
+      {:brod, "~> 3.7.8"},
       {:distillery, "~> 2.0.10"},
       {:guardian, "~> 0.14.0"},
       {:comeonin, "~> 4.1.1"},
