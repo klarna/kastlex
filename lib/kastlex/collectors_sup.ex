@@ -6,6 +6,7 @@ defmodule Kastlex.Collectors do
   end
 
   def init(_options) do
+    :ok = Kastlex.CgCache.init()
     children =
       [ child_spec(Kastlex.MetadataCache, []),
         child_spec(Kastlex.OffsetsCache, []),
