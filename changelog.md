@@ -33,4 +33,8 @@
 
 1.7.1
   - Change dets to ets for consumer state cache (port from 1.5.6).
+1.7.2
+  - Fix prod config, change allowed algos for guardian app from HS512 to ES512
+    also upgrade to brod 3.7.10 to fix a bug which may skip through unstable messages
+    in case messages are published in a transaction
 
