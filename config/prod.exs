@@ -20,7 +20,7 @@ config :logger, :kastlex,
   handle_sasl_reports: true
 
 config :guardian, Guardian,
-  allowed_algos: ["HS512"],
+  allowed_algos: ["ES512"],
   verify_module: Guardian.JWT,
   issuer: "Kastlex",
   ttl: { 30, :days },
