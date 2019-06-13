@@ -185,7 +185,6 @@ function makeCgTreeNodeChildren(r) {
       , {name: 'offset'}
       , {name: 'lagging'}
       , {name: 'commit_time', fmtfun: formatTs}
-      , {name: 'expire_time', fmtfun: formatTs}
       , {name: 'metadata'}
       ];
     var offsetsNode =

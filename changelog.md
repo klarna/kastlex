@@ -37,4 +37,8 @@
   - Fix prod config, change allowed algos for guardian app from HS512 to ES512
     also upgrade to brod 3.7.10 to fix a bug which may skip through unstable messages
     in case messages are published in a transaction
+1.7.3
+  - Upgrade to brod 3.7.11 to fix a bug when receiving empty batch from compacted transactions
+1.7.4
+  - Remove expire_time from GUI since kafka 2.0 does not support it any more
 
