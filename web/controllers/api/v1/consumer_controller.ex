@@ -22,7 +22,8 @@ defmodule Kastlex.API.V1.ConsumerController do
 
   ## Fix user_data fields to base64 if not valid utf8 text
   defp fix_user_data(group) do
-    fix_fun = fn(meta) ->
+    fix_fun = fn(:undefined) -> %{}
+                (meta) ->
       user_data = Map.get(meta, :user_data)
       case is_null(user_data) do
         true ->
@@ -91,4 +92,3 @@ defmodule Kastlex.API.V1.ConsumerController do
     end
   end
 end
-
