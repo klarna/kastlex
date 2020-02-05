@@ -1,5 +1,6 @@
   - Delete unused config `cg_cache_dir` since cg state is no longer cached in dets
-  - Reverted changelog.md from newest-last to newest-first
+  - Reversed changelog.md from newest-last to newest-first
+  - Fix Dockerfile with CMD added and default jwk file set
 
 * 1.7.4
   - Remove expire_time from GUI since kafka 2.0 does not support it any more
