@@ -28,9 +28,6 @@ defmodule Kastlex do
     Application.put_env(:kastlex, :passwd_file_path, passwd_file_path)
 
     # consumer groups
-    cg_cache_dir = system_env("KASTLEX_CG_CACHE_DIR", :priv)
-    Logger.info "Consumer groups cache directory: #{cg_cache_dir}"
-    Application.put_env(:kastlex, :cg_cache_dir, cg_cache_dir)
     cg_exclude_regex = system_env("KASTLEX_CG_EXCLUDE_REGEX", nil)
     maybe_log_parameter("Consumer groups exclude regexp", cg_exclude_regex)
     Application.put_env(:kastlex, :cg_exclude_regex, cg_exclude_regex)
